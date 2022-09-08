@@ -1,0 +1,68 @@
+# LZHUF General terms
+
+Use, distribute, and modify this program freely
+
+## Patents
+
+All known LZW patents world-wide have expired after 2004.
+
+## Historical reference
+
+<https://groups.google.com/g/comp.compression/c/u-YZjDzdF3A>
+
+Post by Russell Marks
+Aug 15, 2001, 5:31:54 AM
+
+Recently I posted asking about the authors/licence of `lzhuf.c'.
+I've contacted most of the authors since, so I thought I'd post the results.
+My main question to them was whether I could use lzhuf.c in a GPL'd program,
+but I did also try to clear up the original licence for those who might want
+to use it in BSD-licenced programs, or whatever.
+[1]
+
+Kenji Rikitake said, "my contribution to lzhuf.c is very little and I will not
+claim any objection for the usage".
+
+Haruhiko Okumura (or should I say, Professor Okumura :-)) said, initially
+referring to the "Permission granted for non-commercial use" comment that
+Kenji asked to be added in 1989, "I was unaware that Kenji had added that
+phrase.  I (and as far as I know, Yoshi) have never been that strict; LHarc
+and LHA have been included in many commercial software packages. There should
+be no problem if you take LZHUF.C as either GPL'd or LGPL'd."
+
+When I asked what licence I should say lzhuf.c was under, suggesting his old
+terms for (among others) lzari.c which are "Use, distribute, and modify this
+program freely", he agreed.
+
+Haruyasu Yoshizaki (Yoshi) has proven difficult to contact. I've emailed him
+at an address Prof. Okumura suggested might be worth trying, but from what
+I've read on the web about how busy he's said to be (and how he doesn't really
+want email, which explains why an email address for him was difficult to come
+by), I don't expect a reply.
+
+So, since lzhuf.c is significantly based on Okumura's lzari.c [2] (which has
+always had the above licence), I'm going to go with his opinion on the matter,
+and assume that Yoshi would not object. (Not least because Prof. Okumura said
+`I can assure you that his intention has always been "try it, and improve
+it."')
+
+In summary:
+
+The authors I've been able to contact agree to the licence "Use, distribute, and modify this program freely" - "freely" here meaning `without restriction',
+and not being a reference to price. The remaining author I've not been able to
+contact, but the licence appears consistent with his intent, and was also the
+licence on the original program which he modified (lzari.c).
+
+-Rus.
+
+[1] But note that LZH compression is unfortunately patented (US patent no.
+4,906,991 covers it) - decompression isn't, so I don't expect this to affect
+my program. And unless you have a specific need for LZH like I did, something
+like zlib would generally be a better choice anyway.
+
+[2] The version of lzhuf.c referred to by the `author' of the CP/M port made
+this rather clearer:
+
+* LZSS coded by Haruhiko OKUMURA
+* Adaptive Huffman Coding coded by Haruyasu YOSHIZAKI
+* Edited and translated to English by Kenji RIKITAKE
