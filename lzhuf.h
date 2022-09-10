@@ -38,7 +38,8 @@ typedef unsigned char uchar;
 #define THRESHOLD          2
 #define NIL                N    /* leaf of tree */
 
-#define N_CHAR          (256 - THRESHOLD + F)   /* kinds of characters (character code = 0..N_CHAR-1) */
+/* kinds of characters (character code = 0..N_CHAR-1) */
+#define N_CHAR          (256 - THRESHOLD + F)
 #define T               (N_CHAR * 2 - 1)        /* size of table */
 #define R               (T - 1)                 /* position of root */
 #define MAX_FREQ        0x8000                  /* updates tree when the */

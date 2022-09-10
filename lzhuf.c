@@ -5,19 +5,34 @@
  some minor changes 4/6/1989
  comments translated by Haruhiko Okumura 4/7/1989
  Adapted to Jnos 1.10h by Jack Snodgrass, KF5MG, 12/19/94
+ Maiko, Replaced malloc() with mallocw() instead, 22-Dec-2005
+ John Malmberg - Wb8tyw, 10-Sep-2022 Standardize formatting.
  ************************************************************
- *
- * 22Dec2005, Maiko, Replaced malloc() with mallocw() instead !
  */
+
+/* Future note: A lot of room for cleanup here if someone
+   cares to adopt this, especially for its use beyond what
+   part of it that D-Rats is using.
+
+   Much of the use of signed integer types should be unsigned based
+   on their use in the code, size_t and ssize_t and other now
+   standard C types should be used.
+
+   I am not checking to see if all of the suggested cleanups will work with
+   all of the current D-Rats build targets at this time.
+
+   The Winlink use of LZHUF requires little-endian use for size
+   fields which seems to be common in programs targeting Microsoft
+   Windows, and opposite of what is most commonly used in network
+   protocols.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #ifdef MSDOS
 #include <alloc.h>
-#endif
-#ifdef __linux__
-#include <errno.h>
 #endif
 #include <time.h>
 
@@ -51,7 +66,10 @@ extern int hfdd_debug;
 #endif
 
 /* see error codes defined in fbbfwd.c */
-#define FBBerror(x,y) { tprintf("*** Protocole Error (%d)\n", x); log(y,"lzhuf: detected FBB protocol error %d", x); }
+/* Link needed for fbbfwd.c as it is not include with the code here. */
+#define FBBerror(x,y) \
+  { tprintf("*** Protocol Error (%d)\n", x); \
+    log(y,"lzhuf: detected FBB protocol error %d", x); }
 
 #ifdef YAPP
 static char EarlyDisconnect[] = "lzhuf: unexpected disconnect";
@@ -62,16 +80,17 @@ void no_log(int i, char const* args, ...){};
 int pwait(void* event){return 0;};
 
 struct lzhufstruct* AllocStruct() {
-        struct lzhufstruct *lzhuf = (struct lzhufstruct *)calloc(sizeof(struct lzhufstruct),1);
-  lzhuf->data = (struct lzhufdata *)malloc(sizeof(struct lzhufdata));
-  lzhuf->dad       = lzhuf->data->dad;
-  lzhuf->rson      = lzhuf->data->rson;
-  lzhuf->lson      = lzhuf->data->lson;
-  lzhuf->text_buf  = lzhuf->data->text_buf;
-  lzhuf->freq      = lzhuf->data->freq;
-  lzhuf->prnt      = lzhuf->data->prnt;
-  lzhuf->son       = lzhuf->data->son;
-  return lzhuf;
+   struct lzhufstruct *lzhuf =
+       (struct lzhufstruct *)calloc(sizeof(struct lzhufstruct),1);
+   lzhuf->data = (struct lzhufdata *)malloc(sizeof(struct lzhufdata));
+   lzhuf->dad       = lzhuf->data->dad;
+   lzhuf->rson      = lzhuf->data->rson;
+   lzhuf->lson      = lzhuf->data->lson;
+   lzhuf->text_buf  = lzhuf->data->text_buf;
+   lzhuf->freq      = lzhuf->data->freq;
+   lzhuf->prnt      = lzhuf->data->prnt;
+   lzhuf->son       = lzhuf->data->son;
+   return lzhuf;
 }
 
 void FreeStruct(struct lzhufstruct* lzhuf) {
@@ -89,7 +108,6 @@ void FreeStruct(struct lzhufstruct* lzhuf) {
    free(lzhuf);
 }
 
-//
 
 #ifdef YAPP
 /* return 1 if allocations succeeded, else
@@ -97,51 +115,57 @@ void FreeStruct(struct lzhufstruct* lzhuf) {
 */
 int AllocDataBuffers(struct fwd *f) {
 
-   if ((f->lzhuf = calloc(sizeof(struct lzhufstruct),1)) == NULL) return 0;
+   if ((f->lzhuf = calloc(sizeof(struct lzhufstruct),1)) == NULL)
+      return 0;
    if ((f->tmpBuffer = mallocw(260)) == NULL) {
-       free (f->lzhuf);
-       f->lzhuf = NULL;
-       return 0;
+      free (f->lzhuf);
+      f->lzhuf = NULL;
+      return 0;
    }
 
 #ifdef LZHDEBUG
-   if(Current->output == Command->output)
+   if (Current->output == Command->output)
       printf("Getting %d bytes of storage.\n", sizeof(struct lzhufdata));
 #endif
 
    f->lzhuf->data_type = 0;        // 0 means one big buffer (UMB or not)
 #ifdef XMS
    f->lzhuf->data = (struct lzhufdata *)mallocUMB(sizeof(struct lzhufdata));
-   if (f->lzhuf->data == NULL)  /* err, or not enough paras avail, so use malloc */
+   if (f->lzhuf->data == NULL) {
+       /* err, or not enough paras avail, so use malloc */
 #endif
-   f->lzhuf->data = (struct lzhufdata *)mallocw(sizeof(struct lzhufdata));
-   if(f->lzhuf->data == (struct lzhufdata *)NULL) {  /* can't get one big buffer, try in pieces */
-      f->lzhuf->data_type = 1;        // 1 means small buffers + lower memory.
-      f->lzhuf->dad       = mallocw((N + 1) * sizeof(int));
-      f->lzhuf->lson      = mallocw((N + 1) * sizeof(int));
-      f->lzhuf->rson      = mallocw((N + 257) * sizeof(int));
-      f->lzhuf->text_buf  = mallocw((N + F - 1) * sizeof(unsigned char));
-      f->lzhuf->freq      = mallocw((T + 1) * sizeof(unsigned));
-      f->lzhuf->prnt      = mallocw((T + N_CHAR) * sizeof(int));
-      f->lzhuf->son       = mallocw((T) * sizeof(int));
+      f->lzhuf->data = (struct lzhufdata *)mallocw(sizeof(struct lzhufdata));
+      if (f->lzhuf->data == (struct lzhufdata *)NULL) {
+         /* can't get one big buffer, try in pieces */
+         f->lzhuf->data_type = 1;      // 1 means small buffers + lower memory.
+         f->lzhuf->dad       = mallocw((N + 1) * sizeof(int));
+         f->lzhuf->lson      = mallocw((N + 1) * sizeof(int));
+         f->lzhuf->rson      = mallocw((N + 257) * sizeof(int));
+         f->lzhuf->text_buf  = mallocw((N + F - 1) * sizeof(unsigned char));
+         f->lzhuf->freq      = mallocw((T + 1) * sizeof(unsigned));
+         f->lzhuf->prnt      = mallocw((T + N_CHAR) * sizeof(int));
+         f->lzhuf->son       = mallocw((T) * sizeof(int));
 
-      if (!f->lzhuf->dad || !f->lzhuf->lson || !f->lzhuf->rson ||
-          !f->lzhuf->text_buf || !f->lzhuf->freq || !f->lzhuf->prnt ||
-          !f->lzhuf->son) {  /* not enough mem for all allocations */
-              FreeDataBuffers(f);
-              return 0;
+         if (!f->lzhuf->dad || !f->lzhuf->lson || !f->lzhuf->rson ||
+             !f->lzhuf->text_buf || !f->lzhuf->freq || !f->lzhuf->prnt ||
+             !f->lzhuf->son) {  /* not enough mem for all allocations */
+            FreeDataBuffers(f);
+            return 0;
           }
 
-   } else {
-      // point pointers to correct spot in large buffer.
-      f->lzhuf->dad       = f->lzhuf->data->dad;
-      f->lzhuf->rson      = f->lzhuf->data->rson;
-      f->lzhuf->lson      = f->lzhuf->data->lson;
-      f->lzhuf->text_buf  = f->lzhuf->data->text_buf;
-      f->lzhuf->freq      = f->lzhuf->data->freq;
-      f->lzhuf->prnt      = f->lzhuf->data->prnt;
-      f->lzhuf->son       = f->lzhuf->data->son;
+      } else {
+         // point pointers to correct spot in large buffer.
+         f->lzhuf->dad       = f->lzhuf->data->dad;
+         f->lzhuf->rson      = f->lzhuf->data->rson;
+         f->lzhuf->lson      = f->lzhuf->data->lson;
+         f->lzhuf->text_buf  = f->lzhuf->data->text_buf;
+         f->lzhuf->freq      = f->lzhuf->data->freq;
+         f->lzhuf->prnt      = f->lzhuf->data->prnt;
+         f->lzhuf->son       = f->lzhuf->data->son;
+      }
+#ifdef XMS
    }
+#endif
    return 1;    /* all OK */
 }
 
@@ -149,7 +173,7 @@ void FreeDataBuffers(struct fwd *f) {
 
    free(f->tmpBuffer);
 
-   if(f->lzhuf->data_type == 1) {
+   if (f->lzhuf->data_type == 1) {
       // Free lower memory blocks.
       free(f->lzhuf->dad);
       free(f->lzhuf->lson);
@@ -214,21 +238,21 @@ unsigned short crc16tab[256] = {
 #endif
 
 /* 23Apr2008, Maiko (VE4KLM), Added flag for b2f considerations */
-int  Encode    (int, char *, char *, struct lzhufstruct *, int);
+int Encode(int, char *, char *, struct lzhufstruct *, int);
 
 /* 24Mar2008, Maiko (VE4KLM), Added flag for b2f considerations */
-int  Decode    (int, char *, char *, struct lzhufstruct *, int);
+int Decode(int, char *, char *, struct lzhufstruct *, int);
 
-static int  GetBit    (struct lzhufstruct *);
+static int GetBit(struct lzhufstruct *);
 #ifdef MSDOS
-static int  GetByte   (struct lzhufstruct *);
+static int GetByte(struct lzhufstruct *);
 #else
-static unsigned short  GetByte   (struct lzhufstruct *);
+static unsigned short GetByte(struct lzhufstruct *);
 #endif
-static void Putcode   (struct lzhufstruct *, int, unsigned);
-static void EncodeEnd (struct lzhufstruct *);
-static int  DecodeChar(struct lzhufstruct *);
-static int  recvbuf   (int,char *,int,int32);
+static void Putcode(struct lzhufstruct *, int, unsigned);
+static void EncodeEnd(struct lzhufstruct *);
+static int DecodeChar(struct lzhufstruct *);
+static int recvbuf(int,char *,int,int32);
 
 /********** LZSS compression **********/
 
@@ -237,9 +261,9 @@ static void InitTree(struct lzhufstruct *lzhuf)  /* initialize trees */
    int  i;
 
    for (i = N + 1; i <= N + 256; i++)
-       lzhuf->rson[i] = NIL;                  /* root */
+      lzhuf->rson[i] = NIL;                  /* root */
    for (i = 0; i < N; i++)
-       lzhuf->dad[i] = NIL;                   /* node */
+      lzhuf->dad[i] = NIL;                   /* node */
 }
 
 static void InsertNode(struct lzhufstruct *lzhuf, int r)  /* insert to tree */
@@ -254,8 +278,8 @@ static void InsertNode(struct lzhufstruct *lzhuf, int r)  /* insert to tree */
    lzhuf->rson[r] = lzhuf->lson[r] = NIL;
    lzhuf->match_length = 0;
    for(;;) {
-      if(cmp >= 0) {
-         if(lzhuf->rson[p] != NIL)
+      if (cmp >= 0) {
+         if (lzhuf->rson[p] != NIL)
             p = lzhuf->rson[p];
          else {
             lzhuf->rson[p] = r;
@@ -263,7 +287,7 @@ static void InsertNode(struct lzhufstruct *lzhuf, int r)  /* insert to tree */
             return;
          }
       } else {
-         if(lzhuf->lson[p] != NIL)
+         if (lzhuf->lson[p] != NIL)
             p = lzhuf->lson[p];
          else {
             lzhuf->lson[p] = r;
@@ -271,17 +295,17 @@ static void InsertNode(struct lzhufstruct *lzhuf, int r)  /* insert to tree */
             return;
          }
       }
-      for(i = 1; i < F; i++)
-         if((cmp = key[i] - lzhuf->text_buf[p + i]) != 0)
+      for (i = 1; i < F; i++)
+         if ((cmp = key[i] - lzhuf->text_buf[p + i]) != 0)
             break;
-      if(i > THRESHOLD) {
-         if(i > lzhuf->match_length) {
+      if (i > THRESHOLD) {
+         if (i > lzhuf->match_length) {
             lzhuf->match_position = ((r - p) & (N - 1)) - 1;
             if((lzhuf->match_length = i) >= F)
                break;
          }
-         if(i == lzhuf->match_length) {
-            if((int)(c = ((r - p) & (N - 1)) - 1) < lzhuf->match_position) {
+         if (i == lzhuf->match_length) {
+            if ((int)(c = ((r - p) & (N - 1)) - 1) < lzhuf->match_position) {
                lzhuf->match_position = c;
             }
          }
@@ -292,7 +316,7 @@ static void InsertNode(struct lzhufstruct *lzhuf, int r)  /* insert to tree */
    lzhuf->rson[r] = lzhuf->rson[p];
    lzhuf->dad[lzhuf->lson[p]] = r;
    lzhuf->dad[lzhuf->rson[p]] = r;
-   if(lzhuf->rson[lzhuf->dad[p]] == p)
+   if (lzhuf->rson[lzhuf->dad[p]] == p)
       lzhuf->rson[lzhuf->dad[p]] = r;
    else
       lzhuf->lson[lzhuf->dad[p]] = r;
@@ -303,16 +327,16 @@ static void DeleteNode(struct lzhufstruct *lzhuf, int p)  /* remove from tree */
 {
    int  q;
 
-   if(lzhuf->dad[p] == NIL)
+   if (lzhuf->dad[p] == NIL)
       return;                 /* not registered */
-   if(lzhuf->rson[p] == NIL)
+   if (lzhuf->rson[p] == NIL)
       q = lzhuf->lson[p];
    else
-   if(lzhuf->lson[p] == NIL)
+   if (lzhuf->lson[p] == NIL)
       q = lzhuf->rson[p];
    else {
       q = lzhuf->lson[p];
-      if(lzhuf->rson[q] != NIL) {
+      if (lzhuf->rson[q] != NIL) {
          do {
             q = lzhuf->rson[q];
          } while (lzhuf->rson[q] != NIL);
@@ -325,7 +349,7 @@ static void DeleteNode(struct lzhufstruct *lzhuf, int p)  /* remove from tree */
       lzhuf->dad[lzhuf->rson[p]] = q;
    }
    lzhuf->dad[q] = lzhuf->dad[p];
-   if(lzhuf->rson[lzhuf->dad[p]] == p)
+   if (lzhuf->rson[lzhuf->dad[p]] == p)
       lzhuf->rson[lzhuf->dad[p]] = q;
    else
       lzhuf->lson[lzhuf->dad[p]] = q;
@@ -435,8 +459,9 @@ static int GetBit(struct lzhufstruct *lzhuf)        /* get one bit */
 {
    int i;
 
-   while(lzhuf->getlen <= 8) {
-      if((i = getc(lzhuf->iFile)) < 0) i = 0;
+   while (lzhuf->getlen <= 8) {
+      if ((i = getc(lzhuf->iFile)) < 0)
+         i = 0;
       lzhuf->getbuf |= i << (8 - lzhuf->getlen);
       lzhuf->getlen += 8;
    }
@@ -450,8 +475,9 @@ static int GetByte(struct lzhufstruct *lzhuf)       /* get one byte */
 {
    unsigned i;
 
-   while(lzhuf->getlen <= 8) {
-      if((i = getc(lzhuf->iFile)) == (unsigned)-1) i = 0;
+   while (lzhuf->getlen <= 8) {
+      if ((i = getc(lzhuf->iFile)) == (unsigned)-1)
+         i = 0;
       lzhuf->getbuf |= i << (8 - lzhuf->getlen);
       lzhuf->getlen += 8;
    }
@@ -467,7 +493,7 @@ static int GetBit(struct lzhufstruct *lzhuf)        /* get one bit */
    register unsigned dx = lzhuf->getbuf;
    register unsigned char glen = lzhuf->getlen;
    
-   while(glen <= 8) {
+   while (glen <= 8) {
       i = getc(lzhuf->iFile);
       if ((int)i < 0)
            i = 0;
@@ -480,13 +506,13 @@ static int GetBit(struct lzhufstruct *lzhuf)        /* get one bit */
 }
 
 
-static unsigned short GetByte(struct lzhufstruct *lzhuf)       /* get one byte */
+static unsigned short GetByte(struct lzhufstruct *lzhuf)     /* get one byte */
 {
    register unsigned i;
    register unsigned dx = lzhuf->getbuf;
    register unsigned char glen = lzhuf->getlen;
 
-   while(glen <= 8) {
+   while (glen <= 8) {
       i = getc(lzhuf->iFile);
       if ((int)i < 0)
            i = 0;
@@ -499,15 +525,16 @@ static unsigned short GetByte(struct lzhufstruct *lzhuf)       /* get one byte *
 }
 #endif
 
-static void Putcode(struct lzhufstruct *lzhuf, int l, unsigned c)         /* output c bits of code */
+/* output c bits of code */
+static void Putcode(struct lzhufstruct *lzhuf, int l, unsigned c)
 {
    lzhuf->putbuf |= c >> lzhuf->putlen;
-   if((lzhuf->putlen += l) >= 8) {
-      if(putc(lzhuf->putbuf >> 8, lzhuf->oFile) == EOF) {
+   if ((lzhuf->putlen += l) >= 8) {
+      if (putc(lzhuf->putbuf >> 8, lzhuf->oFile) == EOF) {
          return;
       }
-      if((lzhuf->putlen -= 8) >= 8) {
-         if(putc(lzhuf->putbuf, lzhuf->oFile) == EOF) {
+      if ((lzhuf->putlen -= 8) >= 8) {
+         if (putc(lzhuf->putbuf, lzhuf->oFile) == EOF) {
             return;
          }
          lzhuf->codesize += 2;
@@ -527,13 +554,13 @@ static void StartHuff(struct lzhufstruct *lzhuf)
 {
    int i, j;
 
-   for(i = 0; i < N_CHAR; i++) {
+   for (i = 0; i < N_CHAR; i++) {
        lzhuf->freq[i] = 1;
        lzhuf->son[i] = i + T;
        lzhuf->prnt[i + T] = i;
    }
    i = 0; j = N_CHAR;
-   while(j <= R) {
+   while (j <= R) {
        lzhuf->freq[j] = lzhuf->freq[i] + lzhuf->freq[i + 1];
        lzhuf->son[j] = i;
        lzhuf->prnt[i] = lzhuf->prnt[i + 1] = j;
@@ -554,15 +581,15 @@ static void reconst(struct lzhufstruct *lzhuf)
    /* collect leaf nodes in the first half of the table */
    /* and replace the freq by (freq + 1) / 2. */
    j = 0;
-   for(i = 0; i < T; i++) {
-       if(lzhuf->son[i] >= T) {
+   for (i = 0; i < T; i++) {
+       if (lzhuf->son[i] >= T) {
           lzhuf->freq[j] = (lzhuf->freq[i] + 1) / 2;
           lzhuf->son[j] = lzhuf->son[i];
           j++;
        }
    }
    /* begin constructing tree by connecting sons */
-   for(i = 0, j = N_CHAR; j < T; i += 2, j++) {
+   for (i = 0, j = N_CHAR; j < T; i += 2, j++) {
        k = i + 1;
        first = lzhuf->freq[j] = lzhuf->freq[i] + lzhuf->freq[k];
        for (k = j - 1; first < lzhuf->freq[k]; k--);
@@ -574,11 +601,11 @@ static void reconst(struct lzhufstruct *lzhuf)
        lzhuf->son[k] = i;
    }
    /* connect prnt */
-   for(i = 0; i < T; i++) {
-       if((k = lzhuf->son[i]) >= T) {
-          lzhuf->prnt[k] = i;
+   for (i = 0; i < T; i++) {
+       if ((k = lzhuf->son[i]) >= T) {
+         lzhuf->prnt[k] = i;
        } else {
-          lzhuf->prnt[k] = lzhuf->prnt[k + 1] = i;
+         lzhuf->prnt[k] = lzhuf->prnt[k + 1] = i;
        }
    }
 }
@@ -590,7 +617,7 @@ static void update(struct lzhufstruct *lzhuf, int c)
 {
    int i, j, k, l;
 
-   if(lzhuf->freq[R] == MAX_FREQ) {
+   if (lzhuf->freq[R] == MAX_FREQ) {
       reconst(lzhuf);
    }
    c = lzhuf->prnt[c + T];
@@ -658,8 +685,8 @@ static void EncodePosition(struct lzhufstruct *lzhuf, unsigned c)
 
 static void EncodeEnd(struct lzhufstruct *lzhuf)
 {
-   if(lzhuf->putlen) {
-      if(putc(lzhuf->putbuf >> 8, lzhuf->oFile) == EOF) {
+   if (lzhuf->putlen) {
+      if (putc(lzhuf->putbuf >> 8, lzhuf->oFile) == EOF) {
          return;
       }
       lzhuf->codesize++;
@@ -704,11 +731,11 @@ static int DecodePosition(struct lzhufstruct *lzhuf)
 /* 29Dec2004, Replaces GOTO 'errxit' labels */
 static int do_errxit (int i, struct lzhufstruct *lzhuf)
 {
-      i=errno;
-      if (!i) i--;  /* some non-zero value */
-      fclose(lzhuf->iFile);
-      fclose(lzhuf->oFile);
-      return i;
+   i=errno;
+   if (!i) i--;  /* some non-zero value */
+   fclose(lzhuf->iFile);
+   fclose(lzhuf->oFile);
+   return i;
 }
 
 /* compression */
@@ -721,16 +748,17 @@ static int do_errxit (int i, struct lzhufstruct *lzhuf)
 
 /* Now returns 0 if encodes OK, else errno or -1 for failure to encode */
 /* 23Apr2008, Maiko (VE4KLM), Added flag for b2f considerations */
-int Encode (int usock, char *iFile, char *oFile, struct lzhufstruct *lzhuf, int  b2f)
+int Encode (int usock, char *iFile, char *oFile,
+            struct lzhufstruct *lzhuf, int  b2f)
 {
    int i = 0, c, len, r, s, last_match_length;
 
-   unsigned long int  filesize   = 0;
+   unsigned long int filesize = 0;
 
-   int32 fbb_filesize = 0;      /* 10Oct2009, Maiko, Very important - 4 bytes ! */
+   int32 fbb_filesize = 0;   /* 10Oct2009, Maiko, Very important - 4 bytes ! */
 
 #ifdef B2F
-        unsigned short crc;
+   unsigned short crc;
 #endif
 
 #ifdef LZHDEBUG
@@ -738,40 +766,40 @@ int Encode (int usock, char *iFile, char *oFile, struct lzhufstruct *lzhuf, int 
 #endif
 
    // Open input and output files.
-   if ( ((lzhuf->iFile = fopen(iFile, "rb")) == NULLFILE)
-   || ((lzhuf->oFile = fopen(oFile, EOMODE)) == NULLFILE) )
-        return (do_errxit (i, lzhuf));
+   if (((lzhuf->iFile = fopen(iFile, "rb")) == NULLFILE) ||
+       ((lzhuf->oFile = fopen(oFile, EOMODE)) == NULLFILE))
+      return (do_errxit (i, lzhuf));
 
    fseek(lzhuf->iFile, 0L, 2);
    if ((filesize = ftell(lzhuf->iFile)) == 0)
-        return (do_errxit (i, lzhuf));
+      return (do_errxit (i, lzhuf));
 
 #ifdef B2F
-        if (b2f)
-        {
-                /*
-                 * B2F puts a CRC in front of the regular FBB compressed data, so
-                 * just assign a couple of bytes for now to take up space. Then we
-                 * update it later when we actually have a valid CRC to put in.
-                 * 16Apr2008, Maiko (VE4KLM)
-                 */
-                if (fwrite (&crc, sizeof(crc), 1, lzhuf->oFile) < 1)
-                        return (do_errxit (i, lzhuf));
-        }
+   if (b2f) {
+      /*
+       * B2F puts a CRC in front of the regular FBB compressed data, so
+       * just assign a couple of bytes for now to take up space. Then we
+       * update it later when we actually have a valid CRC to put in.
+       * 16Apr2008, Maiko (VE4KLM)
+       */
+      if (fwrite (&crc, sizeof(crc), 1, lzhuf->oFile) < 1)
+         return (do_errxit (i, lzhuf));
+   }
 #endif
 
-        /*
-         * 10Oct2009, Maiko, For 64 bit compatibility, it is very important
-         * to note that the FBB length from the file is 4 bytes, previously
-         * using filesize (which is a long) was causing the code to use 8,
-         * which messes everything up, puts JNOS into an intense loop, etc.
-         */ 
+   /*
+    * 10Oct2009, Maiko, For 64 bit compatibility, it is very important
+    * to note that the FBB length from the file is 4 bytes, previously
+    * using filesize (which is a long) was causing the code to use 8,
+    * which messes everything up, puts JNOS into an intense loop, etc.
+    */
 
-        fbb_filesize = (int32)filesize;
+   /* Todo: fbb_filesize needs to be forced to little-endian */
+   fbb_filesize = (int32)filesize;
 
    /* output size of text */
-   if(fwrite(&fbb_filesize, sizeof(fbb_filesize), 1, lzhuf->oFile) < 1) {
-        return (do_errxit (i, lzhuf));
+   if (fwrite(&fbb_filesize, sizeof(fbb_filesize), 1, lzhuf->oFile) < 1) {
+      return (do_errxit (i, lzhuf));
    }
    rewind(lzhuf->iFile);
 
@@ -781,19 +809,19 @@ int Encode (int usock, char *iFile, char *oFile, struct lzhufstruct *lzhuf, int 
    InitTree(lzhuf);
    s = 0;
    r = N - F;
-   for(i = s; i < r; i++)
-       lzhuf->text_buf[i] = ' ';
-   for(len = 0; len < F && (c = getc(lzhuf->iFile)) != EOF; len++)
-       lzhuf->text_buf[r + len] = c;
+   for (i = s; i < r; i++)
+      lzhuf->text_buf[i] = ' ';
+   for (len = 0; len < F && (c = getc(lzhuf->iFile)) != EOF; len++)
+      lzhuf->text_buf[r + len] = c;
    filesize = len;
-   for(i = 1; i <= F; i++)
-       InsertNode(lzhuf, r - i);
+   for( i = 1; i <= F; i++)
+      InsertNode(lzhuf, r - i);
    InsertNode(lzhuf, r);
    do {
       pwait(NULL);
       if(lzhuf->match_length > len)
          lzhuf->match_length = len;
-      if(lzhuf->match_length <= THRESHOLD) {
+      if (lzhuf->match_length <= THRESHOLD) {
          lzhuf->match_length = 1;
          EncodeChar(lzhuf,lzhuf->text_buf[r]);
       } else {
@@ -801,16 +829,17 @@ int Encode (int usock, char *iFile, char *oFile, struct lzhufstruct *lzhuf, int 
          EncodePosition(lzhuf,lzhuf->match_position);
       }
       last_match_length = lzhuf->match_length;
-      for(i = 0; i < last_match_length && (c = getc(lzhuf->iFile)) != EOF; i++) {
+      for (i = 0; i < last_match_length && (c = getc(lzhuf->iFile)) != EOF; i++)
+      {
          DeleteNode(lzhuf, s);
          lzhuf->text_buf[s] = c;
-         if(s < F - 1)
+         if (s < F - 1)
             lzhuf->text_buf[s + N] = c;
          s = (s + 1) & (N - 1);
          r = (r + 1) & (N - 1);
          InsertNode(lzhuf, r);
       }
-      while(i++ < last_match_length) {
+      while (i++ < last_match_length) {
          DeleteNode(lzhuf, s);
          s = (s + 1) & (N - 1);
          r = (r + 1) & (N - 1);
@@ -820,51 +849,47 @@ int Encode (int usock, char *iFile, char *oFile, struct lzhufstruct *lzhuf, int 
    EncodeEnd(lzhuf);
    fclose(lzhuf->iFile);
 #ifdef B2F
-        if (b2f)
-        {
+   if (b2f) {
+      int i, cnt = 0;
+      /*
+       * If B2F, we need a valid CRC value in the first 2 bytes of the msg,
+       * so before we close the outfile file we need to calculate the CRC,
+       * then rewrite the first 2 bytes (place keepers), then close file.
+       * 16Apr2008, Maiko (VE4KLM)
+       */
+      fseek (lzhuf->oFile, 2L, SEEK_SET);     /* don't include place keepers */
+      crc = 0;
+      /* log (-1, "calculate crc"); */
+      while (1) {
+         if ((i = getc (lzhuf->oFile)) < 0)
+            break;
+         crc = UPDCRC16 (i, crc);
+         cnt++;
+      }
+      crc = UPDCRC16(0,crc);
+      crc = UPDCRC16(0,crc);
 
-                int i, cnt = 0;
-                /*
-                 * If B2F, we need a valid CRC value in the first 2 bytes of the msg,
-                 * so before we close the outfile file we need to calculate the CRC,
-                 * then rewrite the first 2 bytes (place keepers), then close file.
-                 * 16Apr2008, Maiko (VE4KLM)
-                 */
-                fseek (lzhuf->oFile, 2L, SEEK_SET);     /* don't include place keepers */
-                crc = 0;
-                /* log (-1, "calculate crc"); */
-                while (1)
-                {
-                        if ((i = getc (lzhuf->oFile)) < 0)
-                                break;
-                        crc = UPDCRC16 (i, crc);
-                        cnt++;
-                }
-                crc = UPDCRC16(0,crc);
-                crc = UPDCRC16(0,crc);
+      /* log (-1, "crc %d iterations %d", crc, cnt); */
 
-                /* log (-1, "crc %d iterations %d", crc, cnt); */
-
-                fseek (lzhuf->oFile, 0L, SEEK_SET);     /* now we can rewrite the CRC */
-                if (fwrite (&crc, sizeof(crc), 1, lzhuf->oFile) < 1)
-                        return (do_errxit (i, lzhuf));
-        }
+      fseek (lzhuf->oFile, 0L, SEEK_SET);     /* now we can rewrite the CRC */
+      if (fwrite (&crc, sizeof(crc), 1, lzhuf->oFile) < 1)
+         return (do_errxit (i, lzhuf));
+   }
 #endif
    fclose(lzhuf->oFile);
 
-        if (lzhuf->iFileSize > 0)
-        {
-                log (usock, "lzhuf compress %ld/%ld = %ld percent",
-                        lzhuf->codesize, lzhuf->iFileSize,
-                                (lzhuf->iFileSize - lzhuf->codesize) * 100L / lzhuf->iFileSize);
-        }
+   if (lzhuf->iFileSize > 0) {
+      log (usock, "lzhuf compress %ld/%ld = %ld percent",
+           lzhuf->codesize, lzhuf->iFileSize,
+           (lzhuf->iFileSize - lzhuf->codesize) * 100L / lzhuf->iFileSize);
+   }
 
 #ifdef LZHSTAT
-   if(lzhuf->iFileSize == 0)
+   if (lzhuf->iFileSize == 0)
       lzhuf->iFileSize  = 1;
-   if(Current->output == Command->output)
+   if (Current->output == Command->output)
       printf("lzhuf Compress: %ld/%ld = %ld%%\n",
-              lzhuf->codesize, lzhuf->iFileSize,
+             lzhuf->codesize, lzhuf->iFileSize,
              (lzhuf->iFileSize - lzhuf->codesize) * 100L / lzhuf->iFileSize);
 #endif /* LZHSTAT */
    return 0;
@@ -872,7 +897,8 @@ int Encode (int usock, char *iFile, char *oFile, struct lzhufstruct *lzhuf, int 
 
 /* Now returns 0 if decodes OK, else errno or -1 if decode fails */
 /* 24Mar2008, Maiko (VE4KLM), Added flag for b2f considerations */
-int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b2f)
+int Decode(int usock, char* iFile, char* oFile,
+           struct lzhufstruct *lzhuf, int b2f)
 {
    int  i = 0;
    int  j = 0;
@@ -880,22 +906,24 @@ int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b
    int  r = 0;
    int  c = 0;
 
-   int32 fbb_filesize = 0;      /* 10Oct2009, Maiko, Very important - 4 bytes ! */
+   int32 fbb_filesize = 0;  /* 10Oct2009, Maiko, Very important - 4 bytes ! */
 
-   unsigned long int  count      = 0;
-            long int  filesize   = 0;
+   unsigned long int count = 0;
+   long int filesize = 0;
 
    /* log (-1, "Decode (%s) (%s) B2F %d", iFile, oFile, b2f); */
 
    // Open input and output files.
-   if ( ((lzhuf->iFile = fopen(iFile, "rb")) == NULLFILE)
-   || ((lzhuf->oFile = fopen(oFile, "wb")) == NULLFILE) )
-        return (do_errxit (i, lzhuf));
+   if (((lzhuf->iFile = fopen(iFile, "rb")) == NULLFILE) ||
+       ((lzhuf->oFile = fopen(oFile, "wb")) == NULLFILE))
+      return (do_errxit (i, lzhuf));
 
    fseek(lzhuf->iFile, 0L, 2);
 
    if ((filesize = ftell(lzhuf->iFile)) == 0)
-        return (do_errxit (i, lzhuf));
+      return (do_errxit (i, lzhuf));
+
+   /* Todo: filesize needs converted from little endian to native */
    lzhuf->iFileSize = filesize;
 
    /* log (-1, "input file size %ld", filesize); */
@@ -903,39 +931,38 @@ int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b
    rewind(lzhuf->iFile);
 
 #ifdef B2F
-        if (b2f)
-        {
-                int16 crc;
-                /*
-                 * B2F puts a CRC in front of the regular FBB compressed data, so
-                 * skip the 2 bytes for now, - implement it later of course.
-                 * 24Mar2008, Maiko (VE4KLM)
-                 * 16Apr2008
-                 */
-                if (fread (&crc, sizeof(crc), 1, lzhuf->iFile) < 1)
-                        log (-1, "could not read crc value");
-                /*
-                else
-                        log (-1, "incoming crc %d", crc);
-                */
+   if (b2f) {
+      int16 crc;
+      /*
+       * B2F puts a CRC in front of the regular FBB compressed data, so
+       * skip the 2 bytes for now, - implement it later of course.
+       * 24Mar2008, Maiko (VE4KLM)
+       * 16Apr2008
+       */
+      if (fread (&crc, sizeof(crc), 1, lzhuf->iFile) < 1)
+         log (-1, "could not read crc value");
+      /*
+      else
+         log (-1, "incoming crc %d", crc);
+      */
 
-                /* 16Apr2008, Thanks to a cool website that lets you give hex
-                 * data (from the temporary fwding files I got the info), and
-                 * then give you the checksums for the varying CRC methods, I
-                 * have determined that WL2K and Airmail use CRC-CCITT (xmodem)
-                 * method, which differs from our fcstab method ...
-                 */
-        }
+      /* 16Apr2008, Thanks to a cool website that lets you give hex
+       * data (from the temporary forwarding files I got the info),
+       * and then give you the checksums for the varying CRC methods, I
+       * have determined that WL2K and Airmail use CRC-CCITT (xmodem)
+       * method, which differs from our fcstab method ...
+       */
+   }
 #endif
 
-        /*
-         * 10Oct2009, Maiko, For 64 bit compatibility, it is very important
-         * to note that the FBB length from the file is 4 bytes, previously
-         * using filesize (which is a long) was causing the code to use 8,
-         * which messes everything up, puts JNOS into an intense loop, etc.
-         */ 
-   if((fread(&fbb_filesize, sizeof(fbb_filesize), 1, lzhuf->iFile) < 1)
-   || (fbb_filesize == 0)) {
+   /*
+    * 10Oct2009, Maiko, For 64 bit compatibility, it is very important
+    * to note that the FBB length from the file is 4 bytes, previously
+    * using filesize (which is a long) was causing the code to use 8,
+    * which messes everything up, puts JNOS into an intense loop, etc.
+    */
+   if ((fread(&fbb_filesize, sizeof(fbb_filesize), 1, lzhuf->iFile) < 1) ||
+       (fbb_filesize == 0)) {
       i=errno;
       if (!i) i--;  /* some non-zero value */
       fclose(lzhuf->iFile);
@@ -943,31 +970,31 @@ int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b
       return i;
    }
 
-        filesize = (long)fbb_filesize;
+   filesize = (long)fbb_filesize;
 
-        /* log (-1, "fbb_filesize %d, filesize %ld", fbb_filesize, filesize); */
+   /* log (-1, "fbb_filesize %d, filesize %ld", fbb_filesize, filesize); */
 
 #ifdef B2F
-        // Martin: Removed, the CRC bytes has already been skipped
-        //if (b2f)
-        //      filesize -= 2;  /* skip the B2F CRC bytes - implement later */
+   // Martin: Removed, the CRC bytes has already been skipped
+   // if (b2f)
+   //    filesize -= 2;  /* skip the B2F CRC bytes - implement later */
 #endif
 
    StartHuff(lzhuf);
-   for(i = 0; i < N - F; i++)
+   for (i = 0; i < N - F; i++)
       lzhuf->text_buf[i] = ' ';
 
    r = N - F;
 
-   for(count = 0; (long int)count < filesize; ) {
+   for (count = 0; (long int)count < filesize;) {
       pwait(NULL);
       c = DecodeChar(lzhuf);
 
         /* log (-1, "%d", c); */
 
-      if(c < 256) {
-         if(putc(c, lzhuf->oFile) == EOF) {
-                return (do_errxit (i, lzhuf));
+      if (c < 256) {
+         if (putc(c, lzhuf->oFile) == EOF) {
+            return (do_errxit (i, lzhuf));
          }
          lzhuf->text_buf[r++] = c;
          r &= (N - 1);
@@ -975,10 +1002,10 @@ int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b
       } else {
          i = (r - DecodePosition(lzhuf) - 1) & (N - 1);
          j = c - 255 + THRESHOLD;
-         for(k = 0; k < j; k++) {
+         for (k = 0; k < j; k++) {
             c = lzhuf->text_buf[(i + k) & (N - 1)];
-            if(putc(c, lzhuf->oFile) == EOF) {
-                return (do_errxit (i, lzhuf));
+            if (putc(c, lzhuf->oFile) == EOF) {
+               return (do_errxit (i, lzhuf));
             }
             lzhuf->text_buf[r++] = c;
             r &= (N - 1);
@@ -989,22 +1016,20 @@ int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b
 
    fclose(lzhuf->iFile);
 
-        fseek (lzhuf->oFile, 0L, SEEK_END);
-        /* log (-1, "size of decoded file is %ld", ftell(lzhuf->oFile)); */
+   fseek(lzhuf->oFile, 0L, SEEK_END);
+   /* log (-1, "size of decoded file is %ld", ftell(lzhuf->oFile)); */
 
    fclose(lzhuf->oFile);
 
-        if (count > 0)
-        {
-                log (usock, "lzhuf uncompress %ld/%ld = %ld percent",
-                        lzhuf->iFileSize, count,
-                                (count - lzhuf->iFileSize) * 100L / count);
-        }
+   if (count > 0) {
+      log(usock, "lzhuf uncompress %ld/%ld = %ld percent",
+           lzhuf->iFileSize, count, (count - lzhuf->iFileSize) * 100L / count);
+   }
 
 #ifdef LZHSTAT
-   if(count == 0)
+   if (count == 0)
       count  = 1;
-   if(Current->output == Command->output)
+   if (Current->output == Command->output)
       printf("lzhuf uncompress: %ld/%ld = %ld%%\n",
              lzhuf->iFileSize, count,
              (count - lzhuf->iFileSize) * 100L / count);
@@ -1024,27 +1049,25 @@ int Decode(int usock, char* iFile, char* oFile, struct lzhufstruct *lzhuf, int b
  * NOTE - this function does work for normal ax25 sockets. I
  * have tested my usual compressed forwarding, it works.
  */
-static void hfddfixsend (int usock, char *buffer, int len)
+static void hfddfixsend(int usock, char *buffer, int len)
 {
-        char *tptr = buffer;
+   char *tptr = buffer;
 
-        int cnt = len;
+   int cnt = len;
 /*
-        if (hfdd_debug)
-        {
-                log (-1, "sending %d bytes", len);
+   if (hfdd_debug) {
+      log (-1, "sending %d bytes", len);
 
-                pk232_dump (len, (unsigned char*)buffer);
-        }
+      pk232_dump (len, (unsigned char*)buffer);
+   }
 */
-        while (cnt > 0)
-        {
-                usputc (usock, *tptr);
-                tptr++;
-                cnt--;
-        }
+   while (cnt > 0) {
+      usputc (usock, *tptr);
+      tptr++;
+      cnt--;
+   }
 
-        usflush (usock);
+   usflush (usock);
 }
 #endif
 
@@ -1075,148 +1098,148 @@ int send_yapp(int usock, struct fwd *f, char *subj, int b2f)
 
 
 #ifdef LZHDEBUG
-    if (((debug  = fopen(tmpnam(NULL),"wb")) == NULLFILE)) {
-        printf("Error opening input file.\n");
-        return 0;
-    }
+   if (((debug  = fopen(tmpnam(NULL),"wb")) == NULLFILE)) {
+      printf("Error opening input file.\n");
+      return 0;
+   }
 #endif
 
    // Encode code.
-      f->lzhuf->codesize = 0;
-      f->lzhuf->getbuf   = 0;
-      f->lzhuf->getlen   = 0;
-      f->lzhuf->putbuf   = 0;
-      f->lzhuf->putlen   = 0;
-      f->lzhuf->code     = 0;
-      f->lzhuf->len      = 0;
+   f->lzhuf->codesize = 0;
+   f->lzhuf->getbuf   = 0;
+   f->lzhuf->getlen   = 0;
+   f->lzhuf->putbuf   = 0;
+   f->lzhuf->putlen   = 0;
+   f->lzhuf->code     = 0;
+   f->lzhuf->len      = 0;
 
-        /* 23Apr2008, Maiko (VE4KLM), Added 'b2f' flag for lzw decoding */
-      rc = Encode(usock, f->iFile, f->oFile, f->lzhuf, b2f);
-      if(rc) {
-         log(usock, "lzhuf: Encode() error %d",rc);
-#ifdef LZHDEBUG
-         fclose(debug);
-#endif
-         return 0;
-      }
-
-      // Open the compressed data file.
-      // We're going to read from the file and close it when we exit.
-      oFile = fopen(f->oFile, "rb");
-
-#ifdef LZHDEBUG
-         printf("we opended %s for input.\n",  f->oFile);
-#endif
-
-      // Grab some space. Largest YAPP packet is 250+ bytes.
-      buffer    = f->tmpBuffer;
-
-      // Set the socket to Binary mode since we'll be sending Binary data.
-      oldmode = sockmode(usock,SOCK_BINARY);
-
-   // Send the subject buffer
-      // The buffer is setup as follows:
-      // Pos Data
-      //   1 SOH
-      //   2 Length of entire buffer ( 5 bytes + strlen(subject) )
-      //   3 Null terminated Subject string.
-      //   x Null terminated '0'-offset string.
-
-      // Make sure that the subject strlen() is equal to or less than SLEN
-      x = strlen(subj);
-      if (x > SLEN) {
-         x = SLEN;
-         subj[SLEN] = '\0';
-      }
-
-#ifndef REVISED
-
-        buffer_len = x + 3;             /* now just subject + 2 NULLS + '0' character */
-
-        ptr = buffer;
-
-        *ptr++ = SOH;
-        *ptr++ = buffer_len;
-        strcpy (ptr, subj);
-        ptr += x;
-        *ptr++ = 0;
-        *ptr++ = '0';
-        *ptr++ = 0;
-#else
-      // length of subject + NULL + length of "     0" + NULL
-      buffer_len = x + 1 + 6 + 1;
-
-      // Build the buffer.
-      buffer[0] = SOH;                       // buffer_Type
-      buffer[1] = buffer_len;                // buffer_Len
-      strcpy(&buffer[2], subj);              // Subject info.
-      strcpy(&buffer[x+3], "     0");        // Always 0 for FBB Messages.
-#endif
-
-#ifndef HFDD
-      // Now we can send it.
-      // buffer_len + 2 ( for the first two bytes.
-      j2send(usock, buffer, buffer_len+2, 0);
-#else
-          hfddfixsend (usock, buffer, buffer_len + 2);
-#endif
-
-#ifdef LZHDEBUG
-          fwrite(buffer, (size_t)(buffer_len+2), 1, debug);
-#endif
-
-   // Send the data buffers.
-      f_checksum = 0;
-      // fill buffer with data. Bytes 0 and 1 are reserved.
-      while ((x = fread(&buffer[2], 1, 250, oFile)) > 0) {
-         // prepare the buffer.
-         buffer[0]  = STX;                         // buffer_Type
-         buffer[1]  = x;                           // buffer_Len
-/*         b_checksum = 0;*/
-         for (cnt=0;cnt<x;cnt++) {
-             f_checksum += buffer[2 + cnt];        // file checksum.
-         }
-/*         buffer[x + 2] = ((-b_checksum) & 0xff);   // Store b_checksum.*/
-
-#ifndef  HFDD
-         // and send it.
-         j2send(usock, buffer, (x + 2), 0);
-#else
-                 hfddfixsend (usock, buffer, x + 2);
-#endif
-
-#ifdef LZHDEBUG
-         fwrite(buffer, (size_t)(x+2), 1, debug);
-#endif
-
-/*         f_checksum += b_checksum;*/
-      } /* endwhile */
-
-   // Send the EOT
-      // Prepare the buffer.
-      buffer[0] = EOT;                             // buffer_Type
-      buffer[1] = ((-f_checksum) & 0xff);          // Checksum.
-
-#ifndef HFDD
-      // and send it.
-      j2send(usock, buffer, 2, 0);
-#else
-          hfddfixsend (usock, buffer, 2);
-#endif
-
-#ifdef LZHDEBUG
-      fwrite(buffer, 2, 1, debug);
-#endif
-
-      // Terminate.
-      fclose(oFile);
+   /* 23Apr2008, Maiko (VE4KLM), Added 'b2f' flag for lzw decoding */
+   rc = Encode(usock, f->iFile, f->oFile, f->lzhuf, b2f);
+   if (rc) {
+      log(usock, "lzhuf: Encode() error %d",rc);
 #ifdef LZHDEBUG
       fclose(debug);
 #endif
+      return 0;
+   }
 
-      // Set the socket back to it's original mode.
-      sockmode(usock,oldmode);
-      return 1;
+   // Open the compressed data file.
+   // We're going to read from the file and close it when we exit.
+   oFile = fopen(f->oFile, "rb");
+
+#ifdef LZHDEBUG
+   printf("we opened %s for input.\n",  f->oFile);
+#endif
+
+   // Grab some space. Largest YAPP packet is 250+ bytes.
+   buffer = f->tmpBuffer;
+
+   // Set the socket to Binary mode since we'll be sending Binary data.
+   oldmode = sockmode(usock,SOCK_BINARY);
+
+   // Send the subject buffer
+   // The buffer is setup as follows:
+   // Pos Data
+   //   1 SOH
+   //   2 Length of entire buffer ( 5 bytes + strlen(subject) )
+   //   3 Null terminated Subject string.
+   //   x Null terminated '0'-offset string.
+
+   // Make sure that the subject strlen() is equal to or less than SLEN
+   x = strlen(subj);
+   if (x > SLEN) {
+      x = SLEN;
+      subj[SLEN] = '\0';
+   }
+
+#ifndef REVISED
+
+   buffer_len = x + 3;        /* now just subject + 2 NULLS + '0' character */
+
+   ptr = buffer;
+
+   *ptr++ = SOH;
+   *ptr++ = buffer_len;
+   strcpy (ptr, subj);
+   ptr += x;
+   *ptr++ = 0;
+   *ptr++ = '0';
+   *ptr++ = 0;
+#else
+   // length of subject + NULL + length of "     0" + NULL
+   buffer_len = x + 1 + 6 + 1;
+
+   // Build the buffer.
+   buffer[0] = SOH;                       // buffer_Type
+   buffer[1] = buffer_len;                // buffer_Len
+   strcpy(&buffer[2], subj);              // Subject info.
+   strcpy(&buffer[x+3], "     0");        // Always 0 for FBB Messages.
+#endif
+
+#ifndef HFDD
+   // Now we can send it.
+   // buffer_len + 2 ( for the first two bytes.
+   j2send(usock, buffer, buffer_len+2, 0);
+#else
+   hfddfixsend(usock, buffer, buffer_len + 2);
+#endif
+
+#ifdef LZHDEBUG
+   fwrite(buffer, (size_t)(buffer_len+2), 1, debug);
+#endif
+
+   // Send the data buffers.
+   f_checksum = 0;
+   // fill buffer with data. Bytes 0 and 1 are reserved.
+   while ((x = fread(&buffer[2], 1, 250, oFile)) > 0) {
+      // prepare the buffer.
+      buffer[0]  = STX;                         // buffer_Type
+      buffer[1]  = x;                           // buffer_Len
+/*      b_checksum = 0;*/
+      for (cnt=0;cnt<x;cnt++) {
+         f_checksum += buffer[2 + cnt];        // file checksum.
+      }
+/*      buffer[x + 2] = ((-b_checksum) & 0xff);   // Store b_checksum.*/
+
+#ifndef  HFDD
+      // and send it.
+      j2send(usock, buffer, (x + 2), 0);
+#else
+      hfddfixsend(usock, buffer, x + 2);
+#endif
+
+#ifdef LZHDEBUG
+      fwrite(buffer, (size_t)(x+2), 1, debug);
+#endif
+
+/*      f_checksum += b_checksum;*/
+   } /* endwhile */
+
+   // Send the EOT
+   // Prepare the buffer.
+   buffer[0] = EOT;                             // buffer_Type
+   buffer[1] = ((-f_checksum) & 0xff);          // Checksum.
+
+#ifndef HFDD
+   // and send it.
+   j2send(usock, buffer, 2, 0);
+#else
+   hfddfixsend(usock, buffer, 2);
+#endif
+
+#ifdef LZHDEBUG
+   fwrite(buffer, 2, 1, debug);
+#endif
+
+   // Terminate.
+   fclose(oFile);
+#ifdef LZHDEBUG
+   fclose(debug);
+#endif
+
+   // Set the socket back to it's original mode.
+   sockmode(usock,oldmode);
+   return 1;
 }
 
 
@@ -1226,7 +1249,8 @@ int send_yapp(int usock, struct fwd *f, char *subj, int b2f)
 */
 
 /* 24Mar2008, Maiko (VE4KLM), added B2F flag for B2F considerations */
-int recv_yapp(int usock, struct fwd *f, char **pzSubject, int32 Timeoutms, int b2f)
+int recv_yapp(int usock, struct fwd *f, char **pzSubject,
+              int32 Timeoutms, int b2f)
 {
    int  recvcnt;
    FILE *iFile=NULLFILE;
@@ -1243,205 +1267,203 @@ int recv_yapp(int usock, struct fwd *f, char **pzSubject, int32 Timeoutms, int b
    int  oldmode;                             // Socket Mode holder.
 
    // Set the socket to Binary mode since we'll be receiving Binary data.
-      oldmode = sockmode(usock,SOCK_BINARY);
+   oldmode = sockmode(usock,SOCK_BINARY);
 
-      GetSubject = TRUE;
-      NoteDone   = FALSE;
-      NoteError  = FALSE;
-      checksum   = 0;
-
-#ifdef HFDD
-        if (hfdd_debug)
-                log (-1, "recv_yapp recv timeout %d", Timeoutms);
-#endif
-
-      while(!NoteDone) {
-         // Get the data packets.
-         j2alarm(Timeoutms);
-         if ((packet_type = recvchar(usock)) == -1) {
-             log(usock, EarlyDisconnect);
-             NoteError = TRUE;
-             break;
-         }
-         j2alarm(0);
+   GetSubject = TRUE;
+   NoteDone = FALSE;
+   NoteError = FALSE;
+   checksum = 0;
 
 #ifdef HFDD
-        if (hfdd_debug)
-                log (-1, "packet type [%x]", packet_type);
+   if (hfdd_debug)
+      log (-1, "recv_yapp recv timeout %d", Timeoutms);
 #endif
-        /* log (-1, "packet type [%x]", packet_type); */
 
-         if (GetSubject) {
-             if (packet_type != SOH) {
-                        log (-1, "fbb protocol error, expecting SOH");
-                 FBBerror(0,usock);
-                 NoteError = TRUE;
-                 break;
-             }
-         }
-         else
-         if ((packet_type != STX) && (packet_type != EOT))  {
-                        log (-1, "fbb protocol error, expecting STX or EOT");
-             FBBerror(3,usock);
-             NoteError = TRUE;
-             break;
-         }
-
-         // Get the packet size.
-         j2alarm(Timeoutms);
-        if ((packet_size = recvchar(usock)) == -1)
-                {
-             log(usock, EarlyDisconnect);
-             NoteError = TRUE;
-             break;
-                }
-         j2alarm(0);
-         if (!packet_size) packet_size=256;   /* 0x00 always means 256 */
+   while(!NoteDone) {
+      // Get the data packets.
+      j2alarm(Timeoutms);
+      if ((packet_type = recvchar(usock)) == -1) {
+         log(usock, EarlyDisconnect);
+         NoteError = TRUE;
+         break;
+      }
+      j2alarm(0);
 
 #ifdef HFDD
-                if (hfdd_debug)
-                        log (-1, "packet size [%d]", packet_size);
+      if (hfdd_debug)
+         log (-1, "packet type [%x]", packet_type);
 #endif
-         if (packet_type == SOH) {
-            // This is the subject. Reset the flag so we don't
-            // come here again.
-            GetSubject = FALSE;
+      /* log (-1, "packet type [%x]", packet_type); */
 
-            // Open the output file.
-            iFile = fopen(f->iFile, "wb");
+      if (GetSubject) {
+         if (packet_type != SOH) {
+            log (-1, "fbb protocol error, expecting SOH");
+            FBBerror(0,usock);
+            NoteError = TRUE;
+            break;
+         }
+      } else if ((packet_type != STX) && (packet_type != EOT))  {
+         log (-1, "fbb protocol error, expecting STX or EOT");
+         FBBerror(3,usock);
+         NoteError = TRUE;
+         break;
+      }
 
-            // This is a subject packet.
-            recvcnt = recvbuf(usock, (char *)&packet_data, packet_size, Timeoutms);
-//              log (-1, "SOH - read %d of %d", recvcnt, packet_size);
+      // Get the packet size.
+      j2alarm(Timeoutms);
+      if ((packet_size = recvchar(usock)) == -1) {
+         log(usock, EarlyDisconnect);
+         NoteError = TRUE;
+         break;
+      }
+      j2alarm(0);
+      if (!packet_size)
+         packet_size=256;   /* 0x00 always means 256 */
 
-            if(recvcnt == -1) {
-               log(usock, EarlyDisconnect);
-               // We've lost the connection ... close the data file.
-               fclose(iFile);
-               NoteDone  = TRUE;
-               NoteError = TRUE;
-               *pzSubject = NULLCHAR;
-            } else
-               *pzSubject = j2strdup(packet_data);  /* note this loses the offset digits */
-         } /* end if */
-         else
-         if (packet_type == STX) {
+#ifdef HFDD
+      if (hfdd_debug)
+         log (-1, "packet size [%d]", packet_size);
+#endif
+      if (packet_type == SOH) {
+         // This is the subject. Reset the flag so we don't
+         // come here again.
+         GetSubject = FALSE;
 
-#ifdef  DONT_COMPILE
-                        while (1)
-                        {
-                                int what2read = packet_size;
+         // Open the output file.
+         iFile = fopen(f->iFile, "wb");
+
+         // This is a subject packet.
+         recvcnt = recvbuf(usock, (char *)&packet_data, packet_size, Timeoutms);
+         // log (-1, "SOH - read %d of %d", recvcnt, packet_size);
+
+         if (recvcnt == -1) {
+            log(usock, EarlyDisconnect);
+            // We've lost the connection ... close the data file.
+            fclose(iFile);
+            NoteDone  = TRUE;
+            NoteError = TRUE;
+            *pzSubject = NULLCHAR;
+         } else {
+            /* note this loses the offset digits */
+            *pzSubject = j2strdup(packet_data);
+         }
+      } /* end if */
+      else if (packet_type == STX) {
+
+#ifdef DONT_COMPILE
+         while (1) {
+            int what2read = packet_size;
 
             // Validate the packet
             // and write it to the file.
-            recvcnt = recvbuf(usock, (char *)&packet_data, what2read, Timeoutms);
-//              log (-1, "STX - read %d of %d", recvcnt, packet_size);
+            recvcnt = recvbuf(usock, (char *)&packet_data,
+                              what2read, Timeoutms);
+            // log (-1, "STX - read %d of %d", recvcnt, packet_size);
 
-                        if (recvcnt == what2read)
-                                break;
-//                      log (-1, "do it again - read %d of %d bytes", recvcnt, what2read);
+            if (recvcnt == what2read)
+               break;
+            // log (-1, "do it again - read %d of %d bytes",
+            //      recvcnt, what2read);
 
-                        what2read = what2read - recvcnt;
+            what2read = what2read - recvcnt;
 
-                        }
+         }
 #endif
-            recvcnt = recvbuf(usock, (char *)&packet_data, packet_size, Timeoutms);
-            if(recvcnt == -1) {
-               log(usock, EarlyDisconnect);
-               // We've lost the connection....
-               NoteDone  = TRUE;
-               NoteError = TRUE;
-            } else {
-               // Write to disk
-               fwrite(packet_data, (size_t)recvcnt, 1, iFile);
-
-               // add the data to the checksum count.
-               for(checksumctr=0;checksumctr<packet_size;checksumctr++) {
-                  checksum += packet_data[checksumctr];
-               }
-            }
-         } /* end if */
-         else
-         if (packet_type == EOT) {
-
-                /* 23Sep2006, Maiko, Ignore for now for flow testing */
-            if (((-checksum) & 0xff) != (packet_size & 0xff)) {
-                        log (-1, "fbb protocol error, EOT checksum");
-                 FBBerror(1,usock);
-                 NoteError = TRUE;
-                 /*break;  NoteDone is set next so we'll exit loop anyhow */
-            }
-
-            // We're done with this message.  Exit while loop and process it.
+         recvcnt = recvbuf(usock, (char *)&packet_data, packet_size, Timeoutms);
+         if (recvcnt == -1) {
+            log(usock, EarlyDisconnect);
+            // We've lost the connection....
             NoteDone  = TRUE;
-         } /* end if */
-      } // End while !NoteDone
+            NoteError = TRUE;
+         } else {
+            // Write to disk
+            fwrite(packet_data, (size_t)recvcnt, 1, iFile);
 
-      if(iFile)
-          fclose(iFile);   // Close the data file.
+            // add the data to the checksum count.
+            for (checksumctr=0;checksumctr<packet_size;checksumctr++) {
+                checksum += packet_data[checksumctr];
+            }
+         }
+      } /* end if (packet_type == STX) */
+      else if (packet_type == EOT) {
+
+         /* 23Sep2006, Maiko, Ignore for now for flow testing */
+         if (((-checksum) & 0xff) != (packet_size & 0xff)) {
+            log (-1, "fbb protocol error, EOT checksum");
+            FBBerror(1,usock);
+            NoteError = TRUE;
+            /* break;  NoteDone is set next so we'll exit loop anyhow */
+         }
+
+         // We're done with this message.  Exit while loop and process it.
+         NoteDone  = TRUE;
+      } /* end if (packet_type == EOT) */
+   } // End while (!NoteDone)
+
+   if (iFile)
+      fclose(iFile);   // Close the data file.
 
 #ifdef HFDD
-        if (hfdd_debug)
-                log (-1, "close yap file [%s] decode ? %d", f->iFile, !NoteError);
+   if (hfdd_debug)
+      log (-1, "close yap file [%s] decode ? %d", f->iFile, !NoteError);
 #endif
 
-        if (!NoteError)
-        {
-         f->lzhuf->codesize = 0;
-         f->lzhuf->getbuf   = 0;
-         f->lzhuf->getlen   = 0;
-         f->lzhuf->putbuf   = 0;
-         f->lzhuf->putlen   = 0;
-         f->lzhuf->code     = 0;
-         f->lzhuf->len      = 0;
+   if (!NoteError) {
+      f->lzhuf->codesize = 0;
+      f->lzhuf->getbuf   = 0;
+      f->lzhuf->getlen   = 0;
+      f->lzhuf->putbuf   = 0;
+      f->lzhuf->putlen   = 0;
+      f->lzhuf->code     = 0;
+      f->lzhuf->len      = 0;
 
 /*
-#ifdef  B2FTESTFILE
-        strcpy(f->iFile, "/tmp/B2Ftestfile");
+#ifdef B2FTESTFILE
+      strcpy(f->iFile, "/tmp/B2Ftestfile");
 #endif
 */
 
 /*      pscurproc ();   13Oct2009, Maiko, Log (debug) stack utilization */
 
-        /* 24Mar2008, Maiko (VE4KLM), Added 'b2f' flag for lzw decoding */
-         rc = Decode(usock, f->iFile, f->oFile, f->lzhuf, b2f);
+      /* 24Mar2008, Maiko (VE4KLM), Added 'b2f' flag for lzw decoding */
+      rc = Decode(usock, f->iFile, f->oFile, f->lzhuf, b2f);
 
-         if (rc)
-                log (usock, "lzhuf: Decode() error %d",rc), ++NoteError;
-      }
+      if (rc)
+         log (usock, "lzhuf: Decode() error %d",rc), ++NoteError;
+   }
 
 #ifdef HFDD
-                if (hfdd_debug)
-                        log (-1, "decode finished");
+   if (hfdd_debug)
+      log (-1, "decode finished");
 #endif
-      // Set the socket back to it's original mode.
-      sockmode(usock,oldmode);
+   // Set the socket back to it's original mode.
+   sockmode(usock,oldmode);
 
-      if(!NoteError)
-         return 1;
-      else
-         return 0;
+   if(!NoteError)
+      return 1;
+   else
+      return 0;
 }
 
 /* Receive a buffer from a socket, returning # chars read (or -1 if EOF/disconnect)
  */
 static int
 recvbuf(int s, char *buf, int len, int32 timeoutms) {
-    int c;
-    int cnt = 0;
+   int c;
+   int cnt = 0;
 
-    j2alarm(timeoutms);   /* assume long enough to read <len> bytes */
-    while(len-- > 0){
-        if((c = recvchar(s)) == EOF){
-            cnt = -1;
-            break;
-        }
-        if(buf != NULLCHAR)
-            *buf++ = c;
-        cnt++;
-    }
-    j2alarm(0);
-    return cnt;
+   j2alarm(timeoutms);   /* assume long enough to read <len> bytes */
+   while (len-- > 0) {
+      if ((c = recvchar(s)) == EOF) {
+         cnt = -1;
+         break;
+      }
+      if (buf != NULLCHAR)
+         *buf++ = c;
+         cnt++;
+      }
+   j2alarm(0);
+   return cnt;
 }
 #endif // yapp
 
