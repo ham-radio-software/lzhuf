@@ -37,7 +37,7 @@ On Windows, use lzhuf.exe instead of lzhuf.
 
 ~~~text
 ./lzhuf e tests/test_data.ref test_data.lzh
-diff test_data.lzh test_data.lzh_ref
+diff test_data.lzh tests/test_data.lzh_ref
 ./lzhuf d test_data.lzh test_data.src
 diff test_data.src tests/test_data.ref
 
