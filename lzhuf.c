@@ -7,6 +7,11 @@
  Adapted to Jnos 1.10h by Jack Snodgrass, KF5MG, 12/19/94
  Maiko, Replaced malloc() with mallocw() instead, 22-Dec-2005
  John Malmberg - Wb8tyw, 10-Sep-2022 Standardize formatting.
+ John Malmberg - Wb8tyw, 10-Sep-2022, Merged in following fix:
+   from https://www.hamradio.me/graphs/WinlinkTests/lzhuf.c
+   Small mod to cope with running on big-endian machines
+   by Jim Hague <jim.hague@acm.org> 1998-02-06
+
  ************************************************************
  */
 
@@ -17,6 +22,9 @@
    Much of the use of signed integer types should be unsigned based
    on their use in the code, size_t and ssize_t and other now
    standard C types should be used.
+
+   HTONL and NTOHL (Spelling?) macros should be used for endian
+   conversion instead of the static functions added here.
 
    I am not checking to see if all of the suggested cleanups will work with
    all of the current D-Rats build targets at this time.
@@ -746,6 +754,23 @@ static int do_errxit (int i, struct lzhufstruct *lzhuf)
 #define EOMODE "wb"
 #endif
 
+static int32 host_to_i86ul(int32 ul)
+{
+   int i;
+   union
+   {
+      unsigned char c[4];
+	   int32 ul;
+   } u;
+
+   for (i = 0; i < 4; i++) {
+      u.c[i] = ul & 0xff;
+	   ul >>= 8;
+   }
+   return u.ul;
+}
+
+
 /* Now returns 0 if encodes OK, else errno or -1 for failure to encode */
 /* 23Apr2008, Maiko (VE4KLM), Added flag for b2f considerations */
 int Encode (int usock, char *iFile, char *oFile,
@@ -794,8 +819,8 @@ int Encode (int usock, char *iFile, char *oFile,
     * which messes everything up, puts JNOS into an intense loop, etc.
     */
 
-   /* Todo: fbb_filesize needs to be forced to little-endian */
-   fbb_filesize = (int32)filesize;
+   /* fbb_filesize needs to be forced to little-endian */
+   fbb_filesize = host_to_i86ul((int32)filesize);
 
    /* output size of text */
    if (fwrite(&fbb_filesize, sizeof(fbb_filesize), 1, lzhuf->oFile) < 1) {
@@ -895,6 +920,22 @@ int Encode (int usock, char *iFile, char *oFile,
    return 0;
 }
 
+static int32 i86ul_to_host(int32 ul)
+{
+   int32 res = 0;
+   int i;
+   union
+   {
+      unsigned char c[4];
+	   int32 ul;
+   } u;
+
+   u.ul = ul;
+   for (i = 3; i >= 0; i--)
+      res = (res << 8) + u.c[i];
+   return res;
+}
+
 /* Now returns 0 if decodes OK, else errno or -1 if decode fails */
 /* 24Mar2008, Maiko (VE4KLM), Added flag for b2f considerations */
 int Decode(int usock, char* iFile, char* oFile,
@@ -907,6 +948,7 @@ int Decode(int usock, char* iFile, char* oFile,
    int  c = 0;
 
    int32 fbb_filesize = 0;  /* 10Oct2009, Maiko, Very important - 4 bytes ! */
+   long int read_filesize = 0; /* Filesize in little endian */
 
    unsigned long int count = 0;
    long int filesize = 0;
@@ -920,10 +962,11 @@ int Decode(int usock, char* iFile, char* oFile,
 
    fseek(lzhuf->iFile, 0L, 2);
 
-   if ((filesize = ftell(lzhuf->iFile)) == 0)
+   if ((read_filesize = ftell(lzhuf->iFile)) == 0)
       return (do_errxit (i, lzhuf));
 
-   /* Todo: filesize needs converted from little endian to native */
+   /* filesize needs converted from little endian to native */
+   filesize = i86ul_to_host((int32)read_filesize);
    lzhuf->iFileSize = filesize;
 
    /* log (-1, "input file size %ld", filesize); */
