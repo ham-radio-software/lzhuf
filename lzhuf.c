@@ -57,6 +57,16 @@
 
 #include "lzhuf.h"
 
+// Microsoft has deprecated fopen()
+#if (defined(_MSC_VER) && (_MSC_VER >= 1400) )
+static FILE* fopen_s_fix(char* fname, char* mode) {
+    FILE* fptr;
+    fopen_s(&fptr, fname, mode);
+    return fptr;
+}
+#define fopen(fname, mode) fopen_s_fix((fname), (mode))
+#endif
+
 #ifdef  B2F
 /* 24Mar2008, Maiko (VE4KLM), for reference to mbx structure */
 //#include "mailbox.h"
@@ -244,12 +254,6 @@ unsigned short crc16tab[256] = {
 #define UPDCRC16(cp, crc) (crc16tab[((crc >> 8) & 255)] ^ (crc << 8) ^ cp)
 
 #endif
-
-/* 23Apr2008, Maiko (VE4KLM), Added flag for b2f considerations */
-int Encode(int, char *, char *, struct lzhufstruct *, int);
-
-/* 24Mar2008, Maiko (VE4KLM), Added flag for b2f considerations */
-int Decode(int, char *, char *, struct lzhufstruct *, int);
 
 static int GetBit(struct lzhufstruct *);
 #ifdef MSDOS

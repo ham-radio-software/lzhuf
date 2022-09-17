@@ -1,6 +1,11 @@
 #ifndef _LZHUF_H
 #define _LZHUF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include <errno.h>
 #include <stdio.h>
 
@@ -94,6 +99,10 @@ int send_yapp(int, struct fwd *, char *, int);
 int recv_yapp(int, struct fwd *, char **, int32, int);
 int AllocDataBuffers(struct fwd *);
 void FreeDataBuffers(struct fwd *);
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* defined(LZHUF) || defined(FBBCMP) */
