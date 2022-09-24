@@ -1,0 +1,51 @@
+---
+name: msbuild_lzhuf
+
+# This builds and tests the lzhuf on Microsoft Windows.
+
+# Always run on Pull Requests
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.2
+
+      - name: Restore NuGet packages
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+      - name: Build 32 bit
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: >-
+          msbuild lzhuf.vcxproj -t:build
+          -p:Configuration=Release -p:Platform=Win32
+
+      - name: Build 64 bit
+        run: >-
+          msbuild lzhuf.vcxproj -t:build
+          -p:Configuration=Release -p:Platform=x64
+
+      - name: Test built images
+        run: |
+          Release\lzhuf.exe e tests\test_data.ref test_data.lzh
+          diff test_data.lzh tests/test_data.lzh_ref
+          x64/Release\lzhuf.exe d test_data.lzh test_data.src
+          diff test_data.src tests/test_data.ref
+
+      - name: Set path for candle and light
+        run: echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Build MSI packages
+        run: |
+          candle lzhuf_x86.wxs
+          light.exe lzhuf_x86.wixobj
+          candle -arch x64 lzhuf_x64.wxs
+          light.exe lzhuf_x64.wixobj
