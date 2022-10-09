@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+	<Product Name='lzhuf Project x86'
+		 Id='90df1c51-94ec-45b0-99e7-deae057c2482'
+		 Language='1033' Codepage='1252' Version='1.0.0'
+		 Manufacturer='ham-radio-software'
+		 UpgradeCode='01f87f5b-d2e1-4905-a206-4db209cb4800'>
+
+		<Package Id='*'
+		   Keywords='Installer'
+		   Description='lzhuf MSBuild Project Installer'
+		   InstallerVersion='100' Languages='1033'
+		   Compressed='yes' SummaryCodepage='1252' />
+
+		<Media Id='1' Cabinet='lzhuf.cab' EmbedCab='yes'/>
+
+		<Directory Id='TARGETDIR' Name='SourceDir'>
+			<Directory Id='ProgramFilesFolder' Name='PFiles'>
+				<Directory Id='APPLICATIONROOTDIRECTORY' Name='lzhuf'>
+				</Directory>
+			</Directory>
+		</Directory>
+		<DirectoryRef Id='APPLICATIONROOTDIRECTORY'>
+			<Component Id='MainExecutable' Guid='3af5cffe-d049-4818-a04b-9f6df36f7097'>
+				<File Id='lzhufEXE' Name='lzhuf.exe' DiskId='1'
+					  Source='release\lzhuf.exe' KeyPath='yes'>
+				</File>
+			</Component>
+		</DirectoryRef>
+		<Feature Id='MainApplication' Title='Main Application' Level="1">
+			<ComponentRef Id='MainExecutable' />
+		</Feature>
+	</Product>
+</Wix>
+

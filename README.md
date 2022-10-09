@@ -10,36 +10,37 @@ C Implementation of lzhuf compression used with Winlink
 
 On Microsoft Windows Msys2 Mingw64, use lzhuf.exe instead of lzhuf.
 
-### Tools needed
+### Tools needed for Linux environments
 
-#### Build packages
+#### Build packages for Linux environments
 
 * coreutils gcc make
 
-#### Testing packages
+#### Testing packages for Linux environments
 
 * diffutils
 
-#### Packages for contributing to GitHub Pull Requests
+#### Github contributing packages for Linux environments
 
 * bash file git grep shellcheck codespell yamllint
 
 On some platforms use ShellCheck for the package name.
 
-### Building
+### Building on Linux environments
 
 ~~~text
 make clean
 make
 ~~~
 
-### Testing
+### Testing on Linux environments
 
 ~~~text
 ./lzhuf e tests/test_data.ref test_data.lzh
 diff test_data.lzh tests/test_data.lzh_ref
 ./lzhuf d test_data.lzh test_data.src
 diff test_data.src tests/test_data.ref
+~~~
 
 ## Deployment in Linux style directory tree
 
@@ -49,19 +50,22 @@ cp ./lzhuf /usr/local/bin/
 
 ## Building on Microsoft Windows Native
 
-### Microsoft Windows Native Tools needed
+### Tools needed for Microsoft Windows environments
 
-* Microsoft Visual Studio Community Edition or better
+#### Build packages for Microsoft Windows environments
 
-### Microsoft Windows Building
+* <https://visualstudio.microsoft.com/vs/community/>
+* <https://wixtoolset.org/releases/>
 
-Need to launch a command prompt window.
+### Testing packages for Microsoft Windows environments
 
-Set your directory to where the lzhuf source is checked out.
+* fc utility built into Microsoft Windows.
 
-MSbuild does not seem to run on PowerShell for Windows 7.
+#### Github contributing packages for Microsoft Windows environments
 
-You have to add the path to MSbuild using a script provided by Visual Studio.
+Recommend using a Linux environment on Microsoft Windows as above.
+
+### Building on Microsoft Windows environments
 
 ~~~bat
 "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VSDevCmd.bat"
@@ -93,6 +97,49 @@ W:\work\d-rats\lzhuf>fc test_data.src tests/test_data.ref
 Comparing files test_data.src and TESTS/TEST_DATA.REF
 FC: no differences encountered
 ~~~
+
+## Creating a lzhuf msi package
+
+First add Wix tools to your path
+
+~~~text
+.\msbuild_setup.bat
+~~~
+
+This is how the GUIDs in the WIX file were generated.
+Unless you are creating new variants, you do not need to do this step.
+
+~~~text
+uuidgen
+90df1c51-94ec-45b0-99e7-deae057c2482
+~~~
+
+Generate 32 bit and 64 bit MSI files from the WIX files in the repository.
+
+~~~text
+candle lzhuf_x86.wxs
+Windows Installer XML Toolset Compiler version 3.11.2.4516
+Copyright (c) .NET Foundation and contributors. All rights reserved.
+
+lzhuf_x86.wxs
+
+light.exe lzhuf_x86.wixobj
+Windows Installer XML Toolset Linker version 3.11.2.4516
+Copyright (c) .NET Foundation and contributors. All rights reserved.
+
+candle -arch x64 lzhuf_x64.wxs
+Windows Installer XML Toolset Compiler version 3.11.2.4516
+Copyright (c) .NET Foundation and contributors. All rights reserved.
+
+lzhuf_x64.wxs
+
+light.exe lzhuf_x64.wixobj
+Windows Installer XML Toolset Linker version 3.11.2.4516
+Copyright (c) .NET Foundation and contributors. All rights reserved.
+~~~
+
+The MSI files can be installed by clicking on them and can be uninstalled
+via the "Programs and Features" application in the control panel.
 
 ## GitHub Pull requests
 

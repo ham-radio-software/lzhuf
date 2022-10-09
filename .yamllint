@@ -1,0 +1,7 @@
+---
+
+extends: default
+
+# comments indentation rules hurt readability
+rules:
+  comments-indentation: disable
