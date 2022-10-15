@@ -1,0 +1,68 @@
+# Dockerfile to for building debian packages in a chroot
+#
+# Copyright 2022 John E. Malmberg
+#
+#
+# Pull base image, optionally passed by argument
+ARG BASE_DISTRO=ubuntu:20.04
+FROM $BASE_DISTRO
+LABEL maintainer="https://github.com/ham-radio-software/lzhuf"
+#
+# If we want to use this parameter later, we must declare it again
+ARG BASE_DISTRO
+
+RUN echo $BASE_DISTRO; \
+    cat /etc/os-release
+
+RUN ls /usr/bin/wget || true; \
+    ls /usr/bin/curl || true; \
+    ls -ld /etc/apt/* || true; \
+    ls -l /etc/apt/trusted.gpg.d || true; \
+    ls -l /etc/apt/keyrings || true; \
+    ls -l /etc/apt/sources.list || true; \
+    cat /etc/apt/sources.list || true; \
+    ls /etc/apt/sources.list.d || true; \
+    cat /etc/apt/sources.list.d/* || true
+
+# use same UID as host and default value of 1000 if not specified
+ARG UID=1000
+
+# Install basic tools
+RUN apt-get update
+
+RUN apt policy debootstrap
+RUN DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y \
+            bash ca-certificates curl debhelper dh-make                 \
+            dpkg-dev dh-python gcc git git-buildpackage locales         \
+            make patch pbuilder pkg-config python3-dev python3-distro   \
+            python3-distutils rpm wget
+
+# Bullseye currently needs some help, buster chroots use bullseye
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=930684
+RUN if [ "$BASE_DISTRO" = 'debian:bullseye' ]; then \
+      printf "deb https://deb.debian.org/debian bullseye-backports main\n" > \
+      /etc/apt/sources.list.d/bullseye-backports.list; \
+      cat /etc/apt/sources.list.d/debian_backports.list /etc/apt/sources.list; \
+      apt-get update; \
+      DEBIAN_FRONTEND=noninteractive apt-get -y -t bullseye-backports install \
+         debootstrap; \
+      apt policy debootstrap; \
+    fi
+
+# Add build user (to keep mock or chrootbuild happy)
+ENV USER build
+RUN useradd -u $UID --user-group -ms /bin/bash $USER
+
+# need to run the pbuilder command as root, as it needs to chroot
+# This does a test of the sudo user setup help diagnose failures.
+RUN if ! grep "^#includedir /etc/sudoers.d" /etc/sudoers; then    \
+        echo "#includedir /etc/sudoers.d" >> /etc/sudoers;        \
+    fi;                                                           \
+    echo "Defaults env_keep += \"DPKG_GENSYMBOLS_CHECK_LEVEL\"" > \
+        /etc/sudoers.d/build;                                     \
+    echo "build ALL=(ALL) NOPASSWD: /usr/sbin/pbuilder" >>        \
+      /etc/sudoers.d/build;                                       \
+    chmod 0440 /etc/sudoers.d/build;                              \
+    visudo -c;                                                    \
+    sudo -l -U build

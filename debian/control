@@ -1,0 +1,19 @@
+Source: lzhuf
+Priority: optional
+Maintainer: Ham-Radio-Software <d-rats@group.io>
+Build-Depends: debhelper (>= 10)
+Standards-version: 4.1.2
+Section: hamradio
+Homepage: https://groups.io/g/d-rats
+Vcs-Git: https://github.com/ham-radio-software/lzhuf.git
+Vcs-Browser: https://github.com/ham-radio-software/lzhuf.git
+
+Package: lzhuf
+Section: hamradio
+Architecture: any
+Multi-Arch: same
+Depends: ${misc:Depends}
+Description: lzhuf compression package
+  lznuf compression tool for D-Rats to communicate with WinLink.
+  .
+  This package contains the lzhuf binary.
