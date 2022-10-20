@@ -1,0 +1,11 @@
+lzhuf (2022.10.08-1) UNRELEASED; urgency=medium
+  [ John E. Malmberg ]
+  * Build for use with D-Rats with Big - Endian support
+
+ -- John E. Malmberg <wb8tyw@qsl.net>  Sat, 08 Oct 2022 20:20:34 +0000
+
+lzhuf (0.0.1-1) UNRELEASED; urgency=medium
+  [ Haruyasu Yoshizaki ]
+  * Earliest known origin
+
+ -- Haruyasu Yoshizaki <nomail@example.com>  Sun, 20 Nov 1988 00:00:00 +0000

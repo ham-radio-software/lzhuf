@@ -6,11 +6,52 @@ C Implementation of lzhuf compression used with Winlink
 * Adaptive Huffman Coding coded by Haruyasu YOSHIZAKI
 * Edited and translated to English by Kenji RIKITAKE
 
-## Building And Testing Unix compatible
+## Building And Testing
 
-On Microsoft Windows Msys2 Mingw64, use lzhuf.exe instead of lzhuf.
+### Debian environments
 
-### Tools needed for Linux environments
+Scripts are provided for building Debian packages in a chroot.
+Generally linux packages should always be built in a chroot.
+
+A Docker container is also used to allow building packages for
+multiple Debian distributions and versions on any compatible docker host.
+
+At this time, I am unable to build Raspbian platforms, as I am not setup
+for emulating "arm7l" architecture, or building a base Docker image for
+Raspbian.  None of the prebuilt Raspbian docker hub images are from official
+signed sources.
+
+My current Raspberry Pi systems do not have the capacity to run a chroot build.
+If you have enough space on a raspberry pi system, and have the packages
+in the packaging/Dockerfile.debian_chroot installed.
+This has not been tested.
+
+### Building all Debian x66_64 packages in a docker container
+
+This takes a while to run on my system.
+
+It currently builds ubuntu 18.04/20.04/22.04 and Debian buster/bullseye.
+
+~~~text
+packaging/build_all_debian.sh
+~~~
+
+The resulting packages will be in the kits directory tree.
+Each distribution will have its own directory, "debian" or "buster".
+
+The .deb file is the debian package created.
+The .dsc file and the two tarballs are what is considered the debian source
+package for creating that specific .deb file.
+The md5sum.txt contains the md5sums for these files.
+
+~~~text
+$ ls kits/ubuntu/jammy
+lzhuf_2022.10.08_amd64.deb      lzhuf_2022.10.08.dsc
+lzhuf_2022.10.08.debian.tar.xz  lzhuf_2022.10.08.orig.tar.gz
+md5sum.txt
+~~~
+
+### Generic Unix compatible environments
 
 #### Build packages for Linux environments
 
@@ -35,6 +76,8 @@ make
 
 ### Testing on Linux environments
 
+On Microsoft Windows Msys2 or Cygwin, use lzhuf.exe instead of lzhuf.
+
 ~~~text
 ./lzhuf e tests/test_data.ref test_data.lzh
 diff test_data.lzh tests/test_data.lzh_ref
@@ -44,20 +87,35 @@ diff test_data.src tests/test_data.ref
 
 ## Deployment in Linux style directory tree
 
+On Microsoft Windows Msys2 or Cygwin, use lzhuf.exe instead of lzhuf.
+
 ~~~text
 cp ./lzhuf /usr/local/bin/
 ~~~
 
-## Building on Microsoft Windows Native
+If you are uploading the resulting binary, you should create an md5sum
+of the image and that md5sum should be published on a different site
+than on where the file is uploaded.
 
-### Tools needed for Microsoft Windows environments
+A repository on the ham-radio-software is planned to host these md5sum files.
+
+Below, place platform with the distribution name, an underscore, and a version.
+such as lzhuf_mac_johndoe_os_catalina_x86_64.txt
+
+~~~text
+md5sum /usr/local/bin/lzhuf > lzhuf_$USER_platform_$ARCH.txt
+~~~
+
+You may want to gzip the "lzhuf" image before uploading it.
+
+### Microsoft Windows environments
 
 #### Build packages for Microsoft Windows environments
 
 * <https://visualstudio.microsoft.com/vs/community/>
 * <https://wixtoolset.org/releases/>
 
-### Testing packages for Microsoft Windows environments
+#### Testing packages for Microsoft Windows environments
 
 * fc utility built into Microsoft Windows.
 
@@ -67,33 +125,45 @@ Recommend using a Linux environment on Microsoft Windows as above.
 
 ### Building on Microsoft Windows environments
 
-~~~bat
-"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VSDevCmd.bat"
+These steps are done in the file packaging/build_msi.bat
+
+Simply run open a command window and run:
+
+~~~text
+packaging/build_msi.bat
 ~~~
 
-Then you can built the win32 and x64 release targets.
+The above build_msi.bat script will create a kits/windows directory
+with 3 files.  The .msi files are the 32 bit and 64 bit Intel x86 and x86_64
+packages.
 
-~~~bat
+The lzhuf_md5sum.txt is generated with the certutil tool as documented
+below.
+
+### More details on building MSI packages
+
+Below is a partial description of the script, it may not be as up to date
+as the current script.
+
+~~~text
 msbuild lzhuf.vcxproj -t:build -p:Configuration=Release -p:Platform=Win32
-msbuild lzhuf.vcxproj -t:build -p:Configuration=Release -p:Platform=x64
+msbuild lzhuf.vcxproj -t:build -p:Configuration=Release -p:Platform=x64make
 ~~~
 
-The Win32 build is put in the Release folder.
+### Testing on Microsoft Windows environments
 
-The x64 build is put in the x64\Release folder.
+On Windows, use lzhuf.exe instead of lzhuf.
 
-### Microsoft Windows Testing
+~~~text
+Release\lzhuf e tests\test_data.ref test_data.lzh
 
-~~~bat
-W:\work\d-rats\lzhuf>Release\lzhuf e tests\test_data.ref test_data.lzh
-
-W:\work\d-rats\lzhuf>fc test_data.lzh tests/test_data.lzh_ref
+fc test_data.lzh tests/test_data.lzh_ref
 Comparing files test_data.lzh and TESTS/TEST_DATA.LZH_REF
 FC: no differences encountered
 
-W:\work\d-rats\lzhuf>x64\Release\lzhuf d test_data.lzh test_data.src
+x64\Release\lzhuf d test_data.lzh test_data.src
 
-W:\work\d-rats\lzhuf>fc test_data.src tests/test_data.ref
+fc test_data.src tests/test_data.ref
 Comparing files test_data.src and TESTS/TEST_DATA.REF
 FC: no differences encountered
 ~~~
@@ -136,14 +206,29 @@ lzhuf_x64.wxs
 light.exe lzhuf_x64.wixobj
 Windows Installer XML Toolset Linker version 3.11.2.4516
 Copyright (c) .NET Foundation and contributors. All rights reserved.
+
+certutil -hashfile ./lzhuf_x64.msi MD5 > lzhuf_md5.txt
+
+certutil -hashfile ./lzhuf_x86.msi MD5 >> lzhuf_md5.txt
+
+if not exist ".\kits\" mkdir kits
+if not exist ".\kits\windows\" mkdir kits\windows
+
+move lzhuf_x64.msi kits\windows
+move lzhuf_x86.msi kits\windows
+move lzhuf_md5.txt kits\windows
 ~~~
 
 The MSI files can be installed by clicking on them and can be uninstalled
 via the "Programs and Features" application in the control panel.
 
-## GitHub Pull requests
+### GitHub Pull requests
 
-### Git commit hook installation
+#### Git commit hook installation
 
+This is used to do checks before committing a change for a pull request.
+
+~~~text
 cp tests/pre-commit .git/hooks
 chmod 755 .git/hooks/pre-commit
+~~~
