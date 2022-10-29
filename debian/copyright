@@ -1,10 +1,8 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
-Files: lzhuf.*
-License: Use, distribute, and modify this program freely
 
-Files: main.c
-Copyright: 2020 Marius Petrescu, YO2LOJ <marius@yo2loj.ro>
+Files: *
+Copyright: 2020-2022 Various
 License: GPL-3+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -20,7 +18,16 @@ License: GPL-3+
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  .
  On Debian systems, the complete text of the GNU General
- Public License version 2 can be found in "/usr/share/common-licenses/GPL-3".
+ Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
 
-Files: *
-License: GPL-3+
+Files: lzhuf.*
+Copyright: None claimed.
+License: Use-distribute-freely
+ Use, distribute, and modify this program freely
+ .
+ The authors that have been able to be contacted agree to the licence
+ "Use, distribute, and modify this program freely" - "freely" here
+ meaning `without restriction', and not being a reference to price.
+ The remaining author that has not been able to be contacted, but the
+ licence appears consistent with his intent, and was also the licence
+ on the original program which he modified (lzari.c).

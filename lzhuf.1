@@ -1,0 +1,15 @@
+.Dd October 22, 2022
+.Dt LZHUF 1
+.Sh NAME
+.Nm lzhuf
+.Nd lzhuf /- Winlink compatible compression tool
+.Sh SYNOPSIS
+lzuf d | e  infile outfile
+.Sh DESCRIPTION
+lzhuf compresses or decompresses a file in
+a format that is used by the winlink program.
+.Sh EXAMPLES
+.Ss Compress a file into lzh format
+lzhuf e test_data test_data.lzh
+.Ss Decompress a lzh format file to original
+lzhuf d test_data.lzh original

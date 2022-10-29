@@ -144,6 +144,7 @@ mkdir -p "${DEB_BUILD}/debian"
 cd "${TOPDIR}/" && \
   find debian -maxdepth 1 -type f \
   -exec cp '{}' "${DEB_BUILD}/"{} ';'
+rm -f "${DEB_BUILD}/debian/compat"
 if [ -e "${TOPDIR}/debian/source" ]; then
   cp -r "${TOPDIR}/debian/source" "${DEB_BUILD}/debian"
 fi
@@ -168,6 +169,8 @@ pushd "${DEB_BUILD}"
   dpkg-buildpackage -S --no-sign --no-check-builddeps
 popd
 
+lintian -icv --color auto "${DEB_TOP}/${DEB_DSC}"
+
 sudo pbuilder create \
          --distribution "$CHROOT_CODENAME" \
          --extrapackages "gnupg ca-certificates" \
@@ -176,6 +179,12 @@ sudo pbuilder create \
 
 sudo DPKG_GENSYMBOLS_CHECK_LEVEL="${DPKG_GENSYMBOLS_CHECK_LEVEL:-4}" \
      pbuilder build --buildresult "$DEB_TOP" "$DEB_TOP/$DEB_DSC"
+
+# The Ubuntu 22.04 builds are using a newer build than their
+# lintian knows how to process so that error must be suppressed.
+lintian -iEcv --pedantic --color auto \
+    --suppress-tags malformed-deb-archive \
+    "${DEB_TOP}/${DEB_NAME}_$version"*.deb
 
 find . -name '*.dsc'
 find . -name '*.deb'
