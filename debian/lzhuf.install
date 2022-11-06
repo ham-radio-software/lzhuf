@@ -1,1 +1,2 @@
-usr/bin/*
+usr/bin/lzhuf
+usr/share/man/man1/lzhuf.1

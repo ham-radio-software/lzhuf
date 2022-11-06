@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # See debhelper(7) (uncomment to enable)
 # output every command that modifies files on the build system.
-#export DH_VERBOSE = 1
+# export DH_VERBOSE = 1
 
 # see FEATURE AREAS in dpkg-buildflags(1)
 #export DEB_BUILD_MAINT_OPTIONS = hardening=+all
@@ -21,12 +21,18 @@ clean::
 override_dh_auto_build:
 	make
 
-override_dh_install:
-	cp -al lzhuf bin
+override_dh_auto_clean:
+	make clean
+
+override_dh_auto_install:
+	mkdir -p usr/bin
+	mv lzhuf usr/bin
+	mkdir -p usr/share/man/man1
+	mv lzhuf.1 usr/share/man/man1
+	dh_install
 
 override_dh_missing:
 	dh_missing -v --list-missing
 
 override_dh_auto_test:
 	echo "Skipping test."
-

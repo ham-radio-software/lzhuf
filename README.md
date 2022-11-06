@@ -13,6 +13,19 @@ C Implementation of lzhuf compression used with Winlink
 Scripts are provided for building Debian packages in a chroot.
 Generally linux packages should always be built in a chroot.
 
+There are various quirks for building debian packages for all of these
+distributions and versions what will not show up until you actually test
+them.
+
+In the debian/control file, while the current debhelper-compat is (= 13),
+we need (= 12) for building Ubuntu 20.04 and earlier and (= 10) is needed
+for building debian buster.  Also while the current Standards-version
+is 4.5.1, the older 4.5.0 is needed for the same reasons.
+
+Future distribution and version support may require either dropping older
+versions from being pre-built, or may require having the build procedure
+patch the debian/control file.
+
 A Docker container is also used to allow building packages for
 multiple Debian distributions and versions on any compatible docker host.
 
@@ -24,11 +37,15 @@ signed sources.
 My current Raspberry Pi systems do not have the capacity to run a chroot build.
 If you have enough space on a raspberry pi system, and have the packages
 in the packaging/Dockerfile.debian_chroot installed.
-This has not been tested.
+This has not been tested so use the generic linux instructions below unless
+you would like to experiment.
 
 ### Building all Debian x66_64 packages in a docker container
 
 This takes a while to run on my system.
+
+Your code except for updates in the debian and packaging directories must
+be in a git commit or it will not be used in the build.
 
 It currently builds ubuntu 18.04/20.04/22.04 and Debian buster/bullseye.
 
@@ -49,6 +66,32 @@ $ ls kits/ubuntu/jammy
 lzhuf_2022.10.08_amd64.deb      lzhuf_2022.10.08.dsc
 lzhuf_2022.10.08.debian.tar.xz  lzhuf_2022.10.08.orig.tar.gz
 md5sum.txt
+~~~
+
+Installing after downloading or building the packages is done with the
+apt-get command
+
+~~~text
+$ sudo apt-get install ./kits/debian/bullseye/lzhuf_2022.10.08-1.0_amd64.deb
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Note, selecting 'lzhuf' instead of './kits/debian/bullseye/lzhuf_2022.10.08-1.0_amd64.deb'
+The following NEW packages will be installed:
+  lzhuf
+0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+Need to get 0 B/7,704 B of archives.
+After this operation, 36.9 kB of additional disk space will be used.
+Get:1 /mnt/aviary/home/malmberg/work/d-rats/lzhuf/kits/debian/bullseye/lzhuf_2022.10.08-1.0_amd64.deb lzhuf amd64 2022.10.08-1.0 [7,704 B]
+Selecting previously unselected package lzhuf.
+(Reading database ... 193355 files and directories currently installed.)
+Preparing to unpack .../lzhuf_2022.10.08-1.0_amd64.deb ...
+Unpacking lzhuf (2022.10.08-1.0) ...
+Setting up lzhuf (2022.10.08-1.0) ...
+Processing triggers for man-db (2.9.4-2) ...
+
+$ command -v lzhuf
+/usr/bin/lzhuf
 ~~~
 
 ### Generic Unix compatible environments

@@ -1,6 +1,6 @@
-lzhuf (2022.10.08-1) UNRELEASED; urgency=medium
+lzhuf (2022.10.08-1.0) UNRELEASED; urgency=medium
   [ John E. Malmberg ]
-  * Build for use with D-Rats with Big - Endian support
+  * NMU Build for use with D-Rats with Big - Endian support
 
  -- John E. Malmberg <wb8tyw@qsl.net>  Sat, 08 Oct 2022 20:20:34 +0000
 
