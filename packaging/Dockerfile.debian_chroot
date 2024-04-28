@@ -4,14 +4,16 @@
 #
 #
 # Pull base image, optionally passed by argument
-ARG BASE_DISTRO=ubuntu:20.04
-FROM $BASE_DISTRO
+ARG BASE_DISTRO=ubuntu:24.04
+ARG PLATFORM=linux/amd64/v1
+FROM --platform=$PLATFORM $BASE_DISTRO
 LABEL maintainer="https://github.com/ham-radio-software/lzhuf"
 #
 # If we want to use this parameter later, we must declare it again
 ARG BASE_DISTRO
 
 RUN echo $BASE_DISTRO; \
+    arch; \
     cat /etc/os-release
 
 RUN ls /usr/bin/wget || true; \

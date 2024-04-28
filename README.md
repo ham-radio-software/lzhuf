@@ -29,25 +29,51 @@ patch the debian/control file.
 A Docker container is also used to allow building packages for
 multiple Debian distributions and versions on any compatible docker host.
 
-At this time, I am unable to build Raspbian platforms, as I am not setup
-for emulating "arm7l" architecture, or building a base Docker image for
-Raspbian.  None of the prebuilt Raspbian docker hub images are from official
-signed sources.
+For building Raspbian packages on x86_64 systems, you need additional
+packages.  On a debian platform, those packages are "qemu binfmt-support qemu-user-static".
 
-My current Raspberry Pi systems do not have the capacity to run a chroot build.
-If you have enough space on a raspberry pi system, and have the packages
-in the packaging/Dockerfile.debian_chroot installed.
-This has not been tested so use the generic linux instructions below unless
-you would like to experiment.
+After you install those platforms this docker command:
+
+~~~bash
+docker run --rm --privileged multiarch/qemu-user-static \
+       --reset -p yes --credential yes
+~~~
+
+Test it with this command, the flags should be "OCF".
+
+~~~bash
+cat /proc/sys/fs/binfmt_misc/qemu-aarch64
+enabled
+interpreter /usr/bin/qemu-aarch64-static
+flags: OCF
+offset 0
+magic 7f454c460201010000000000000000000200b700
+mask ffffffffffffff00fffffffffffffffffeffffff
+~~~
+
+For Raspbian Bookworm platforms, which are 64 bit, you need the docker platform
+as "linux/arm64/v8".
+
+For Raspbian Buster platforms, which are 32 bit, you need the docker platform as "linux/arm32/v7".
 
 ### Building all Debian x66_64 packages in a docker container
 
 This takes a while to run on my system.
 
-Your code except for updates in the debian and packaging directories must
+Properly building Linux packages involves building them in a chroot environment.
+What the chroot environment is a clean minimal install of the target operating
+system to make sure that any dependencies are known and that nothing in the
+build is affected by system specific dependencies.
+
+Your code, except for updates in the debian and packaging directories must
 be in a git commit or it will not be used in the build.
 
-It currently builds ubuntu 18.04/20.04/22.04 and Debian buster/bullseye.
+It currently builds for:
+
+* Ubuntu 18.04/20.04/22.04/24.04 on x86_64
+* Debian bullseye/buster/bookworm on x86_64
+* Debian buster on armv7l (Raspbian 32 bit compatible)
+* Debian bookworm on arm64v8 (aarch64) (Raspbian 64 bit compatible)
 
 ~~~text
 packaging/build_all_debian.sh
