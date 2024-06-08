@@ -33,7 +33,7 @@ export DPKG_GENSYMBOLS_CHECK_LEVEL=1
 : "${DEB_NAME:=lzhuf}"
 
 # The debian/changelog file controls the version, so we need to pull it out
-change_ver="$(grep ^$DEB_NAME --max-count=1 debian/changelog)"
+change_ver="$(grep ^"$DEB_NAME" --max-count=1 debian/changelog)"
 change_ver1="${change_ver%%)*}"
 version="${change_ver1#*\(}"
 tar_version="${version%-*}"
@@ -117,7 +117,7 @@ DEB_BUILD="$DEB_TOP/$DEB_NAME-$version"
 # A packaging build it assuming that it it pulling a specific build
 # from a change control system.  Debian wants this format for that.
 # Note that there must be an underscore befroe the version.
-# Some packaging wrapers will simply fetch a tarball from the change
+# Some packaging wrappers will simply fetch a tarball from the change
 # control system.  Note that any existing "debian" directory in the
 # tarball will be overwritten by the debian directory used for this
 # run.
@@ -175,7 +175,7 @@ sudo pbuilder create \
          --distribution "$CHROOT_CODENAME" \
          --extrapackages "gnupg ca-certificates" \
          --othermirror "$DISTRO_MIRROR" \
-         $VERSION_CODENAME
+         "$VERSION_CODENAME"
 
 sudo DPKG_GENSYMBOLS_CHECK_LEVEL="${DPKG_GENSYMBOLS_CHECK_LEVEL:-4}" \
      pbuilder build --buildresult "$DEB_TOP" "$DEB_TOP/$DEB_DSC"
